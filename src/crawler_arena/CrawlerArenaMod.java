@@ -255,9 +255,9 @@ public class CrawlerArenaMod extends Plugin {
                 u.apply(StatusEffects.boss);
                 u.health = 15000 * Groups.player.size();
                 u.armor = 0;
-                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
+                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 60, 0, -32));
                 break;
-            case(28):
+            case(25):
                 Call.sendMessage("[green]Victory.");
                 gameIsOver = true;
                 Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.sharded));}, 2);
