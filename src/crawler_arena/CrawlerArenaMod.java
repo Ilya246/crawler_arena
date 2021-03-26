@@ -91,7 +91,7 @@ public class CrawlerArenaMod extends Plugin {
         Events.on(PlayerJoin.class, e -> {
             if(!units.containsKey(e.player.uuid()) || !money.containsKey(e.player.uuid())){
                 money.put(e.player.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
-                Unit spawnUnit = UnitTypes.dagger.spawn(worldCenterX * 8, worldCenterY * 8);
+                Unit spawnUnit = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
                 spawnUnit.add();
                 units.put(e.player.uuid(), spawnUnit);
                 e.player.unit(spawnUnit);
@@ -106,7 +106,12 @@ public class CrawlerArenaMod extends Plugin {
             };
         });
         Events.on(PlayerLeave.class, e -> {
-            Unit u = units.get(e.player.uuid());
+            Unit u;
+            try{
+                u = units.get(e.player.uuid());
+            }catch(Exception help){
+                u = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
+            };
             float hp = u.health;
             boolean isAlive = hp > 0;
             u.kill();
