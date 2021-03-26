@@ -148,9 +148,12 @@ public class CrawlerArenaMod extends Plugin {
                 Groups.unit.each(u -> {u.kill();});
                 return;
             };
+            if(Mathf.chance(1 / 8000 * Time.delta)){
+                Call.sendMessage("[cyan]Do /info to view info about upgrading.");
+            };
             Groups.player.each(p -> {
                 try{
-                    Call.setHudText(p.con, "Balance: " + String.valueOf(money.get(p.uuid())[0]));
+                    Call.setHudText(p.con, "Money: " + String.valueOf(Mathf.round(money.get(p.uuid())[0])));
                 }catch(Exception why){
                     money.put(p.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
                 };
@@ -228,7 +231,7 @@ public class CrawlerArenaMod extends Plugin {
         Timer.schedule(()->{waveIsOver = false;}, 1);
         state.wave = wave;
         UnitTypes.crawler.health += 1 * wave;
-        UnitTypes.crawler.speed += 0.005 * wave;
+        UnitTypes.crawler.speed += 0.003 * wave;
         float crawlers = Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 200);
         switch(wave){
             case(21):
