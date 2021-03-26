@@ -107,12 +107,14 @@ public class CrawlerArenaMod extends Plugin {
         });
         Events.on(PlayerLeave.class, e -> {
             Unit u;
+            float hp;
             try{
                 u = units.get(e.player.uuid());
+                hp = u.health;
             }catch(Exception help){
                 u = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
+                hp = u.health;
             };
-            float hp = u.health;
             boolean isAlive = hp > 0;
             u.kill();
             if(isAlive){
@@ -243,10 +245,14 @@ public class CrawlerArenaMod extends Plugin {
                 UnitTypes.reign.speed = 3;
                 Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
                 u.apply(StatusEffects.boss);
-                u.health = 300000;
+                u.health = 15000 * Groups.player.size();
                 u.armor = 0;
                 u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
                 break;
+            case(28):
+                Call.sendMessage("[green]Victory.");
+                gameIsOver = true;
+                Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.sharded));}, 2);
             default:
                 break;
         };
