@@ -45,8 +45,8 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{4000000});
-        upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.omura);
+        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{4000000});
+        upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
             upgradeableUnitNames.put(u.name, u);
@@ -100,27 +100,14 @@ public class CrawlerArenaMod extends Plugin {
                 e.player.sendMessage("[cyan]Seems like you have played in this match before. Your unit and money have been restored.");
                 Unit oldUnit = units.get(e.player.uuid());
                 if(oldUnit.health > 0f){
-                    oldUnit.add();
+                    if(findPlayer(oldUnit) != null){
+                        Player invader = findPlayer(oldUnit);
+                        if(units.get(invader.uuid()) != null){
+                            invader.unit(units.get(invader.uuid()));
+                        };
+                    };
                     e.player.unit(oldUnit);
                 };
-            };
-        });
-        Events.on(PlayerLeave.class, e -> {
-            Unit u;
-            float hp;
-            try{
-                u = units.get(e.player.uuid());
-                hp = u.health;
-            }catch(Exception help){
-                u = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
-                hp = u.health;
-            };
-            boolean isAlive = hp > 0;
-            u.kill();
-            if(isAlive){
-                u.health = hp;
-            }else{
-                u.health = 0f;
             };
         });
         Events.on(UnitDestroyEvent.class, e -> {
