@@ -75,7 +75,7 @@ public class CrawlerArenaMod extends Plugin {
 
         Events.on(WorldLoadEvent.class, e -> {
             if(Team.sharded.core() != null){
-                Timer.schedule(() -> {Team.sharded.cores().each(c -> {c.kill();});}, 1);
+                arc.Core.app.post(() -> {Team.sharded.cores().each(c -> {c.kill();});});
             };
             content.blocks().each(b -> {
                 state.rules.bannedBlocks.add(b);
