@@ -45,7 +45,7 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{4000000});
+        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{1500000});
         upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
@@ -237,7 +237,7 @@ public class CrawlerArenaMod extends Plugin {
         state.wave = wave;
         UnitTypes.crawler.health += 1 * wave;
         UnitTypes.crawler.speed += 0.003 * wave;
-        float crawlers = Mathf.pow(2.71f, 1f + wave / 2);
+        float crawlers = Mathf.pow(2.71f, 1f + wave / 2) * Groups.player.size() / 20;
         switch(wave){
             case(21):
                 Call.sendMessage("[red]What makes you live for this long?");
@@ -245,7 +245,7 @@ public class CrawlerArenaMod extends Plugin {
             case(23):
                 Call.sendMessage("[red]Why are you still alive?");
                 break;
-            case(26):
+            case(24):
                 Call.sendMessage("[#FF0000]Observation is no longer prohibited. It comes.");
                 crawlers = 0;
                 UnitTypes.reign.maxRange = 8000;
@@ -314,21 +314,32 @@ public class CrawlerArenaMod extends Plugin {
                     sy = 32;
                     break;
             };
+            Unit u;
             UnitTypes.crawler.spawn(Team.crux, sx, sy);
             if(arkyids > 0){
-                UnitTypes.arkyid.spawn(Team.crux, sx, sy).health = 1000;
+                u = UnitTypes.arkyid.spawn(Team.crux, sx, sy);
+                u.health = 1000;
+                u.maxHealth = 1000;
+                u.armor = 0;
                 arkyids--;
             };
             if(spirocts > 0){
-                UnitTypes.spiroct.spawn(Team.crux, sx, sy).health = 250;
+                u = UnitTypes.spiroct.spawn(Team.crux, sx, sy);
+                u.health = 250;
+                u.maxHealth = 250;
+                u.armor = 0;
                 spirocts--;
             };
             if(atraxes > 0){
-                UnitTypes.atrax.spawn(Team.crux, sx, sy).health = 100;
+                u = UnitTypes.atrax.spawn(Team.crux, sx, sy);
+                u.health = 100;
+                u.armor = 0;
                 atraxes--;
             };
             if(toxopids > 0){
-                UnitTypes.toxopid.spawn(Team.crux, sx, sy).health = 3000;
+                u = UnitTypes.toxopid.spawn(Team.crux, sx, sy);
+                u.health = 3000;
+                u.armor = 0;
                 toxopids--;
             };
         }
@@ -344,6 +355,7 @@ public class CrawlerArenaMod extends Plugin {
                     if(newUnit.type == UnitTypes.crawler){
                         newUnit.abilities.add(new UnitSpawnAbility(UnitTypes.crawler, 60f, 0f, -8f));
                         newUnit.health = 400;
+                        newUnit.maxHealth = 400;
                         newUnit.armor = 10;
                     };
                     newUnit.add();
