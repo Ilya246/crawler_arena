@@ -13,6 +13,7 @@ import arc.util.Timer;
 import arc.util.Time;
 import arc.struct.Seq;
 import arc.struct.ObjectSet;
+import arc.struct.ObjectMap;
 import arc.struct.*;
 import arc.math.Mathf;
 import mindustry.mod.*;
@@ -26,12 +27,12 @@ public class CrawlerArenaMod extends Plugin {
 
     public static boolean gameIsOver = true;
     public static int wave = 1;
-    public static Seq<String> players = new Seq<>();
-    public static Seq<Unit> units = new Seq<>();
-    public static Seq<float[]> money = new Seq<>();
-    public static Seq<String> upgradeableUnitNames = new Seq<>();
+    public static ObjectMap<String, Unit> units = new ObjectMap<>();
+    public static ObjectMap<String, float[]> money = new ObjectMap<>();
     public static Seq<UnitType> upgradeableUnits = new Seq<>();
-    public static int[] unitCosts = new int[]{200, 200, 325, 75, 400, 1500, 2750, 1500, 3000, 1500, 2500, 30000, 30000, 30000, 100000, 125000, 150000, 1000000};
+    public static ObjectMap<String, UnitType> upgradeableUnitNames = new ObjectMap<>();
+    public static int[] unitCostsBase = new int[]{200, 200, 325, 75, 400, 1500, 2750, 1500, 3000, 1500, 2500, 30000, 30000, 30000, 100000, 125000, 150000, 1000000};
+    public static ObjectMap<UnitType, int[]> unitCosts = new ObjectMap<>();
     public static boolean waveIsOver = false;
     public static String unitNames = "";
     public static int worldWidth;
@@ -40,14 +41,21 @@ public class CrawlerArenaMod extends Plugin {
     public static int worldCenterY;
     public static boolean firstWaveLaunched = false;
 
+    public void bypass(int i, UnitType u){
+        unitCosts.put(u, new int[]{unitCostsBase[i]});
+        upgradeableUnitNames.put(u.name, u);
+        i++;
+    }
+
     @Override
     public void init(){
         upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.omura);
+        int i = 0;
         upgradeableUnits.each(u -> {
-            upgradeableUnitNames.add(u.name);
+            bypass(i, u);
         });
         upgradeableUnits.each(u -> {
-            unitNames += u.name + " " + getCost(u) + ", ";
+            unitNames += u.name + " " + unitCosts.get(u)[0] + ", ";
         });
 
         UnitTypes.crawler.maxRange = 8000;
@@ -86,16 +94,13 @@ public class CrawlerArenaMod extends Plugin {
             newGame();
         });
         Events.on(PlayerJoin.class, e -> {
-            if(!players.contains(e.player.uuid())){
-                players.add(e.player.uuid());
-                units.add(UnitTypes.dagger.create(Team.sharded));
-                float[] newMoney = new float[1];
-                newMoney[0] = Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000) * 7;
-                money.add(newMoney);
+            if(!units.containsKey(e.player.uuid())){
+                money.put(e.player.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
+                units.put(e.player.uuid(), UnitTypes.dagger.create(Team.sharded));
                 e.player.sendMessage("[cyan]Welcome to Crawler Arena. Consider using /info to view key information. Upgrading to a unit will spawn you at the bottomleft of the map as that unit.");
             }else{
                 e.player.sendMessage("[cyan]Seems like you have played in this match before. Your unit and money have been restored.");
-                Unit oldUnit = findUnit(e.player);
+                Unit oldUnit = units.get(e.player.uuid());
                 if(oldUnit.health > 0f){
                     oldUnit.add();
                     e.player.unit(oldUnit);
@@ -103,7 +108,7 @@ public class CrawlerArenaMod extends Plugin {
             };
         });
         Events.on(PlayerLeave.class, e -> {
-            Unit u = findUnit(e.player);
+            Unit u = units.get(e.player.uuid());
             float hp = u.health;
             boolean isAlive = hp > 0;
             u.kill();
@@ -121,7 +126,7 @@ public class CrawlerArenaMod extends Plugin {
                         respawnPlayers();
                         Timer.schedule(() -> {nextWave();}, 10);
                         waveIsOver = true;
-                        money.each(m -> {m[0] += Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000) * 5;});
+                        money.each((p, m) -> {m[0] += Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 5f;});
                     }
                 }, 1);
             }
@@ -139,7 +144,7 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             };
             Groups.player.each(p -> {
-                Call.setHudText(p.con, "Balance: " + String.valueOf(money.get(findIndex(p))[0]));
+                Call.setHudText(p.con, "Balance: " + String.valueOf(money.get(p.uuid())[0]));
             });
         });
     }
@@ -158,7 +163,6 @@ public class CrawlerArenaMod extends Plugin {
         Timer.schedule(()->{gameIsOver = false;}, 1);
         UnitTypes.crawler.speed = 0.43f;
         UnitTypes.crawler.health = 60;
-        players.clear();
         units.clear();
         money.clear();
         setupUnits();
@@ -171,17 +175,10 @@ public class CrawlerArenaMod extends Plugin {
     public void setupUnits(){
         Groups.player.each(p -> {
             p.unit().kill();
-            players.add(p.uuid());
-            units.add(UnitTypes.dagger.create(Team.sharded));
-            float[] newMoney = new float[1];
-            newMoney[0] = 10;
-            money.add(newMoney);
+            units.put(p.uuid(), UnitTypes.dagger.create(Team.sharded));
+            money.put(p.uuid(), new float[]{10f});
         });
     }
-
-    public int getCost(UnitType type){
-        return unitCosts[upgradeableUnits.indexOf(type)];
-    };
 
     public void respawnPlayers(){
         Groups.unit.each(u -> {
@@ -190,9 +187,8 @@ public class CrawlerArenaMod extends Plugin {
             };
         });
         Groups.player.each(p -> {
-            Unit playerUnit = findUnit(p);
+            Unit playerUnit = units.get(p.uuid());
             if(p.unit() != playerUnit){
-                p.unit().kill();
                 int sX;
                 int sY;
                 do{
@@ -212,22 +208,10 @@ public class CrawlerArenaMod extends Plugin {
         });
     }
 
-    public Unit findUnit(Player p){
-        try{
-            return units.get(players.indexOf(p.uuid()));
-        }catch(Exception ohno){
-            return UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
-        }
-    }
-
     public Player findPlayer(Unit u){
         return Groups.player.find(p -> {
             return p.unit() == u;
         });
-    }
-
-    public int findIndex(Player p){
-        return players.indexOf(p.uuid());
     }
 
     public void nextWave(){
@@ -329,12 +313,10 @@ public class CrawlerArenaMod extends Plugin {
     @Override
     public void registerClientCommands(CommandHandler handler){
         handler.<Player>register("upgrade", "<type>", "Upgrades your unit type.", (args, player) -> {
-            if(upgradeableUnitNames.contains(args[0])){
-                int playerIndex = findIndex(player);
-                int newUnitIndex = upgradeableUnitNames.indexOf(args[0]);
-                UnitType newUnitType = upgradeableUnits.get(newUnitIndex);
-                if(money.get(playerIndex)[0] >= getCost(newUnitType)){
-                    money.get(playerIndex)[0] -= getCost(newUnitType);
+            if(upgradeableUnitNames.containsKey(args[0])){
+                UnitType newUnitType = upgradeableUnitNames.get(args[0]);
+                if(money.get(player.uuid())[0] >= unitCosts.get(newUnitType)[0]){
+                    money.get(player.uuid())[0] -= unitCosts.get(newUnitType)[0];
                     Unit newUnit = newUnitType.spawn(player.x, player.y);
                     if(newUnit.type == UnitTypes.crawler){
                         newUnit.abilities.add(new UnitSpawnAbility(UnitTypes.crawler, 60f, 0f, -8f));
@@ -342,7 +324,8 @@ public class CrawlerArenaMod extends Plugin {
                         newUnit.armor = 10;
                     };
                     player.unit().kill();
-                    units.set(playerIndex, newUnit);
+                    units.remove(player.uuid());
+                    units.put(player.uuid(), newUnit);
                     player.unit(newUnit);
                     player.sendMessage("Upgrade successful.");
                 }else{
