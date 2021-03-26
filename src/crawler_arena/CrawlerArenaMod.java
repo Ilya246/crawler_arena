@@ -200,6 +200,9 @@ public class CrawlerArenaMod extends Plugin {
         });
         Groups.player.each(p -> {
             Unit playerUnit = units.get(p.uuid());
+            if(playerUnit == null){
+                playerUnit = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
+            };
             if(p.unit().type == null){
                 int sX;
                 int sY;
