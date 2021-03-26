@@ -31,7 +31,7 @@ public class CrawlerArenaMod extends Plugin {
     public static ObjectMap<String, float[]> money = new ObjectMap<>();
     public static Seq<UnitType> upgradeableUnits = new Seq<>();
     public static ObjectMap<String, UnitType> upgradeableUnitNames = new ObjectMap<>();
-    public static int[] unitCostsBase = new int[]{200, 200, 325, 75, 400, 1500, 2750, 1500, 3000, 1500, 2500, 30000, 30000, 30000, 100000, 125000, 150000, 1000000};
+    public static Seq<int[]> unitCostsBase = new Seq<>();
     public static ObjectMap<UnitType, int[]> unitCosts = new ObjectMap<>();
     public static boolean waveIsOver = false;
     public static String unitNames = "";
@@ -41,18 +41,14 @@ public class CrawlerArenaMod extends Plugin {
     public static int worldCenterY;
     public static boolean firstWaveLaunched = false;
 
-    public void bypass(int i, UnitType u){
-        unitCosts.put(u, new int[]{unitCostsBase[i]});
-        upgradeableUnitNames.put(u.name, u);
-        i++;
-    }
-
     @Override
     public void init(){
+        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{100000}, new int[]{125000}, new int[]{150000}, new int[]{1000000});
         upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.omura);
-        int i = 0;
         upgradeableUnits.each(u -> {
-            bypass(i, u);
+            unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
+            upgradeableUnitNames.put(u.name, u);
+            unitCostsBase.remove(0);
         });
         upgradeableUnits.each(u -> {
             unitNames += u.name + " " + unitCosts.get(u)[0] + ", ";
