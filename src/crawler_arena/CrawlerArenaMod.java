@@ -203,6 +203,7 @@ public class CrawlerArenaMod extends Plugin {
             Unit playerUnit = units.get(p.uuid());
             if(playerUnit == null){
                 rewritePlayers();
+                playerUnit = units.get(p.uuid());
             };
             if(p.unit().type == null){
                 int sX;
