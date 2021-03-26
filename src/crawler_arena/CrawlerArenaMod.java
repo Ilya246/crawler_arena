@@ -23,6 +23,7 @@ import mindustry.entities.abilities.*;
 import ArenaAI.*;
 import mindustry.ai.Pathfinder;
 import arc.Core.*;
+import mindustry.content.StatusEffects;
 
 public class CrawlerArenaMod extends Plugin {
 
@@ -44,7 +45,7 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{100000}, new int[]{125000}, new int[]{150000}, new int[]{1000000});
+        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{4000000});
         upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.omura);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
@@ -79,7 +80,7 @@ public class CrawlerArenaMod extends Plugin {
             content.blocks().each(b -> {
                 state.rules.bannedBlocks.add(b);
             });
-            arc.Core.app.post(() -> {state.rules.canGameOver = false; state.rules.waveTimer = false; state.rules.waves = true; Call.setRules(state.rules);});
+            arc.Core.app.post(() -> {state.rules.canGameOver = false; state.rules.waveTimer = false; state.rules.waves = true; state.rules.unitCap = 100; Call.setRules(state.rules);});
             worldWidth = world.width() * 8;
             worldHeight = world.height() * 8;
             worldCenterX = worldWidth / 2;
@@ -236,8 +237,9 @@ public class CrawlerArenaMod extends Plugin {
                 UnitTypes.reign.defaultController = ArenaAI::new;
                 UnitTypes.reign.speed = 3;
                 Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
-                u.health = 50000;
-                u.armor = 25;
+                u.apply(StatusEffects.boss);
+                u.health = 600000;
+                u.armor = 200;
                 u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
                 break;
             default:
