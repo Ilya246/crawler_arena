@@ -243,6 +243,8 @@ public class CrawlerArenaMod extends Plugin {
             default:
                 break;
         };
+        Call.worldDataBegin();
+        Groups.player.each(p -> {netServer.sendWorldData(p);});
         int atraxes = 0;
         int spirocts = 0;
         int arkyids = 0;
