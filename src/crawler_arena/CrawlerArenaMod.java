@@ -45,8 +45,8 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{4000000});
-        upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
+        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{4000000});
+        upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
             upgradeableUnitNames.put(u.name, u);
@@ -61,6 +61,7 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.omura.health = 35000;
         UnitTypes.omura.armor = 20;
         UnitTypes.risso.flying = true;
+        UnitTypes.sei.flying = true;
         UnitTypes.fortress.health = 1200;
         UnitTypes.crawler.defaultController = ArenaAI::new;
         UnitTypes.fortress.armor = 20;
@@ -105,6 +106,8 @@ public class CrawlerArenaMod extends Plugin {
                         if(units.get(invader.uuid()) != null){
                             invader.unit(units.get(invader.uuid()));
                         };
+                    }else{
+                        rewritePlayers();
                     };
                     e.player.unit(oldUnit);
                 };
@@ -142,7 +145,7 @@ public class CrawlerArenaMod extends Plugin {
                 try{
                     Call.setHudText(p.con, "Money: " + String.valueOf(Mathf.round(money.get(p.uuid())[0])));
                 }catch(Exception why){
-                    money.put(p.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
+                    rewritePlayers();
                 };
             });
         });
@@ -179,6 +182,17 @@ public class CrawlerArenaMod extends Plugin {
         });
     }
 
+    public void rewritePlayers(){
+        Groups.player.each(p -> {
+            if(!units.containsKey(p.uuid())){
+                units.put(p.uuid(), UnitTypes.dagger.create(Team.sharded));
+            };
+            if(!money.containsKey(p.uuid())){
+                money.put(p.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
+            };
+          });
+    }
+
     public void respawnPlayers(){
         Groups.unit.each(u -> {
             if(findPlayer(u) == null){
@@ -188,7 +202,7 @@ public class CrawlerArenaMod extends Plugin {
         Groups.player.each(p -> {
             Unit playerUnit = units.get(p.uuid());
             if(playerUnit == null){
-                playerUnit = UnitTypes.dagger.spawn(worldCenterX, worldCenterY);
+                rewritePlayers();
             };
             if(p.unit().type == null){
                 int sX;
@@ -222,7 +236,7 @@ public class CrawlerArenaMod extends Plugin {
         state.wave = wave;
         UnitTypes.crawler.health += 1 * wave;
         UnitTypes.crawler.speed += 0.003 * wave;
-        float crawlers = Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 200);
+        float crawlers = Mathf.pow(2.71f, 1f + wave / 2);
         switch(wave){
             case(21):
                 Call.sendMessage("[red]What makes you live for this long?");
@@ -257,8 +271,8 @@ public class CrawlerArenaMod extends Plugin {
         int toxopids = 0;
         int spawnX = worldWidth - 32;
         int spawnY = worldHeight - 32;
-        int spreadX = worldCenterX - 160;
-        int spreadY = worldCenterY - 160;
+        int spreadX = worldCenterX - 160 - wave * 3;
+        int spreadY = worldCenterY - 160 - wave * 3;
         if(crawlers >= 100){
             atraxes = Mathf.floor(Math.min(crawlers / 10f, 400));
             crawlers -= atraxes;
@@ -273,7 +287,7 @@ public class CrawlerArenaMod extends Plugin {
             crawlers = 500;
         };
         if(crawlers >= 1000){
-            arkyids = Mathf.floor(crawlers / 2000f);
+            arkyids = Mathf.floor(crawlers / (2000f + (wave - 10) * 100));
             crawlers = Math.min(crawlers, 1000);
         };
         for(int i = 0; i < crawlers; i++){
