@@ -238,8 +238,8 @@ public class CrawlerArenaMod extends Plugin {
                 UnitTypes.reign.speed = 3;
                 Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
                 u.apply(StatusEffects.boss);
-                u.health = 600000;
-                u.armor = 200;
+                u.health = 300000;
+                u.armor = 100;
                 u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
                 break;
             default:
