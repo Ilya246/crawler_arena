@@ -22,6 +22,7 @@ import mindustry.ai.types.*;
 import mindustry.entities.abilities.*;
 import ArenaAI.*;
 import mindustry.ai.Pathfinder;
+import arc.Core.*;
 
 public class CrawlerArenaMod extends Plugin {
 
@@ -73,15 +74,12 @@ public class CrawlerArenaMod extends Plugin {
 
         Events.on(WorldLoadEvent.class, e -> {
             if(Team.sharded.core() != null){
-                Timer.schedule(() -> {Team.sharded.core().kill();}, 1);
+                Timer.schedule(() -> {Team.sharded.cores().each(c -> {c.kill();});}, 1);
             };
             content.blocks().each(b -> {
                 state.rules.bannedBlocks.add(b);
             });
-            state.rules.canGameOver = false;
-            state.rules.waveTimer = false;
-            state.rules.waves = true;
-            Call.setRules(state.rules);
+            arc.Core.app.post(() -> {state.rules.canGameOver = false; state.rules.waveTimer = false; state.rules.waves = true; Call.setRules(state.rules);});
             worldWidth = world.width() * 8;
             worldHeight = world.height() * 8;
             worldCenterX = worldWidth / 2;
@@ -90,9 +88,12 @@ public class CrawlerArenaMod extends Plugin {
             newGame();
         });
         Events.on(PlayerJoin.class, e -> {
-            if(!units.containsKey(e.player.uuid())){
+            if(!units.containsKey(e.player.uuid()) || !money.containsKey(e.player.uuid())){
                 money.put(e.player.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
-                units.put(e.player.uuid(), UnitTypes.dagger.create(Team.sharded));
+                Unit spawnUnit = UnitTypes.dagger.spawn(worldCenterX * 8, worldCenterY * 8);
+                spawnUnit.add();
+                units.put(e.player.uuid(), spawnUnit);
+                e.player.unit(spawnUnit);
                 e.player.sendMessage("[cyan]Welcome to Crawler Arena. Consider using /info to view key information. Upgrading to a unit will spawn you at the bottomleft of the map as that unit.");
             }else{
                 e.player.sendMessage("[cyan]Seems like you have played in this match before. Your unit and money have been restored.");
@@ -140,7 +141,11 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             };
             Groups.player.each(p -> {
-                Call.setHudText(p.con, "Balance: " + String.valueOf(money.get(p.uuid())[0]));
+                try{
+                    Call.setHudText(p.con, "Balance: " + String.valueOf(money.get(p.uuid())[0]));
+                }catch(Exception why){
+                    money.put(p.uuid(), new float[]{Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 7f});
+                };
             });
         });
     }
@@ -184,7 +189,7 @@ public class CrawlerArenaMod extends Plugin {
         });
         Groups.player.each(p -> {
             Unit playerUnit = units.get(p.uuid());
-            if(p.unit() != playerUnit){
+            if(p.unit().type == null){
                 int sX;
                 int sY;
                 do{
@@ -217,27 +222,26 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.crawler.health += 1 * wave;
         UnitTypes.crawler.speed += 0.005 * wave;
         float crawlers = Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 200);
-        if(wave < 20){
-            Call.sendMessage("[lightgray]If you didn't respawn, try /sync.");
-        }else{
-            switch(wave){
-                case(21):
-                    Call.sendMessage("[red]What makes you live for this long?");
-                    break;
-                case(23):
-                    Call.sendMessage("[red]Why are you still alive?");
-                    break;
-                case(26):
-                    Call.sendMessage("[#FF0000]Observation is no longer prohibited. It comes.");
-                    crawlers = 0;
-                    UnitTypes.reign.maxRange = 8000;
-                    UnitTypes.reign.defaultController = ArenaAI::new;
-                    UnitTypes.reign.speed = 3;
-                    Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
-                    u.health = 50000;
-                    u.armor = 25;
-                    u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
-            };
+        switch(wave){
+            case(21):
+                Call.sendMessage("[red]What makes you live for this long?");
+                break;
+            case(23):
+                Call.sendMessage("[red]Why are you still alive?");
+                break;
+            case(26):
+                Call.sendMessage("[#FF0000]Observation is no longer prohibited. It comes.");
+                crawlers = 0;
+                UnitTypes.reign.maxRange = 8000;
+                UnitTypes.reign.defaultController = ArenaAI::new;
+                UnitTypes.reign.speed = 3;
+                Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
+                u.health = 50000;
+                u.armor = 25;
+                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 240, 0, -32));
+                break;
+            default:
+                break;
         };
         int atraxes = 0;
         int spirocts = 0;
@@ -319,11 +323,16 @@ public class CrawlerArenaMod extends Plugin {
                         newUnit.health = 400;
                         newUnit.armor = 10;
                     };
-                    player.unit().kill();
-                    units.remove(player.uuid());
-                    units.put(player.uuid(), newUnit);
-                    player.unit(newUnit);
-                    player.sendMessage("Upgrade successful.");
+                    newUnit.add();
+                    units.get(player.uuid()).kill();
+                    gameIsOver = true;
+                    arc.Core.app.post(() -> {
+                        units.remove(player.uuid());
+                        units.put(player.uuid(), newUnit);
+                        player.unit(newUnit);
+                        player.sendMessage("Upgrade successful.");
+                        gameIsOver = false;
+                    });
                 }else{
                     player.sendMessage("Not enough money.");
                 };
