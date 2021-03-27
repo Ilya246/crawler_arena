@@ -252,7 +252,7 @@ public class CrawlerArenaMod extends Plugin {
                 u.apply(StatusEffects.boss);
                 u.health = 15000 * Groups.player.size();
                 u.armor = 0;
-                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 60, 0, -32));
+                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 600 / Groups.player.size(), 0, -32));
                 break;
             case(25):
                 Call.sendMessage("[green]Victory in" + String.valueOf(timer) + "seconds.");
