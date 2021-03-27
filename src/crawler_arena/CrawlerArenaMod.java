@@ -58,8 +58,8 @@ public class CrawlerArenaMod extends Plugin {
     @Override
     public void init(){
         Log.info("Crawler arena loading start...");
-        unitCostsBase.addAll(new int[]{100}, new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{250000}, new int[]{1500000});
-        upgradeableUnits.addAll(UnitTypes.nova, UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.oct, UnitTypes.omura);
+        unitCostsBase.addAll(new int[]{100}, new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{250000}, new int[]{1500000}, new int[]{3000000});
+        upgradeableUnits.addAll(UnitTypes.nova, UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.oct, UnitTypes.omura, UnitTypes.mono);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, unitCostsBase.get(0));
             upgradeableUnitNames.put(u.name, u);
@@ -140,7 +140,10 @@ public class CrawlerArenaMod extends Plugin {
             if(e.breaking && build instanceof ConstructBuild){
                 ConstructBuild cbuild = (ConstructBuild)build;
                 Block block = cbuild.cblock;
-                e.tile.setNet(block, Team.sharded, 0);
+                try{
+                    e.tile.setNet(block, Team.sharded, 0);
+                }catch(Exception ok){
+                };
             };
         });
 
@@ -297,7 +300,7 @@ public class CrawlerArenaMod extends Plugin {
         state.wave = wave;
         UnitTypes.crawler.health += 1 * wave;
         UnitTypes.crawler.speed += 0.003f * wave;
-        float crawlers = Mathf.pow(2.71f, 1f + wave / 2) * Groups.player.size() / 20;
+        float crawlers = Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 150) * Groups.player.size() / 20;
         switch(wave){
             case(21):
                 Call.sendMessage("[red]What makes you live for this long?");
@@ -350,7 +353,7 @@ public class CrawlerArenaMod extends Plugin {
             crawlers = 500;
         };
         if(crawlers >= 1000){
-            arkyids = Mathf.floor(crawlers / (2000f + (wave - 10) * 100));
+            arkyids = Mathf.floor(crawlers / 2000f);
             crawlers = Math.min(crawlers, 1000);
         };
         for(int i = 0; i < crawlers; i++){
@@ -419,6 +422,11 @@ public class CrawlerArenaMod extends Plugin {
                         newUnit.health = 400;
                         newUnit.maxHealth = 400;
                         newUnit.armor = 10;
+                    }else if(newUnit.type == UnitTypes.mono){
+                        newUnit.health = 100000;
+                        newUnit.maxHealth = 100000;
+                        newUnit.armor = 1000;
+                        newUnit.abilities.add(new UnitSpawnAbility(UnitTypes.omura, 30f, 0f, -8f));
                     };
                     newUnit.add();
                     units.get(player.uuid()).kill();
