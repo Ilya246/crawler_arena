@@ -55,8 +55,8 @@ public class CrawlerArenaMod extends Plugin {
     @Override
     public void init(){
         Log.info("Crawler arena loading start...");
-        unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{1500000});
-        upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
+        unitCostsBase.addAll(new int[]{100}, new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{250000}, new int[]{1500000});
+        upgradeableUnits.addAll(UnitTypes.nova, UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.oct, UnitTypes.omura);
         upgradeableUnits.each(u -> {
             unitCosts.put(u, unitCostsBase.get(0));
             upgradeableUnitNames.put(u.name, u);
@@ -224,7 +224,7 @@ public class CrawlerArenaMod extends Plugin {
         Groups.player.each(p -> {
             UnitType type = p.unit().type;
             if(type == UnitTypes.gamma || type == UnitTypes.beta || type == UnitTypes.alpha){
-                p.unit().destroy();
+                p.unit().kill();
             };
             units.put(p.uuid(), UnitTypes.dagger.create(Team.sharded));
             money.put(p.uuid(), new float[]{10f});
@@ -245,7 +245,7 @@ public class CrawlerArenaMod extends Plugin {
     public void respawnPlayers(){
         Groups.unit.each(u -> {
             if(findPlayer(u) == null){
-                u.destroy();
+                u.kill();
             };
         });
         Groups.player.each(p -> {
@@ -300,15 +300,16 @@ public class CrawlerArenaMod extends Plugin {
                 UnitTypes.reign.maxRange = 8000;
                 UnitTypes.reign.defaultController = ArenaAI::new;
                 UnitTypes.reign.speed = 3f;
+                UnitTypes.scepter.defaultController = ArenaAI::new;
                 Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
                 u.apply(StatusEffects.boss);
-                u.health = 15000 * Groups.player.size();
+                u.health = 5000 * Groups.player.size();
                 u.armor = 0;
-                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 600 / Groups.player.size(), 0, -32));
+                u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 1800 / Groups.player.size(), 0, -32));
                 break;
             case(25):
                 UnitTypes.reign.speed = 0.35f;
-                Call.sendMessage("[green]Victory has been achieved in" + String.valueOf(timer) + "seconds.");
+                Call.sendMessage("[green]Victory has been achieved in " + String.valueOf(timer) + " seconds.");
                 gameIsOver = true;
                 Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.sharded));}, 2);
             default:
