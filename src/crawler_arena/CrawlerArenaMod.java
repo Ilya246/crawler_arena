@@ -233,7 +233,7 @@ public class CrawlerArenaMod extends Plugin {
         Timer.schedule(()->{waveIsOver = false;}, 1);
         state.wave = wave;
         UnitTypes.crawler.health += 1 * wave;
-        UnitTypes.crawler.speed += 0.003 * wave;
+        UnitTypes.crawler.speed += 0.003f * wave;
         float crawlers = Mathf.pow(2.71f, 1f + wave / 2) * Groups.player.size() / 20;
         switch(wave){
             case(21):
@@ -247,7 +247,7 @@ public class CrawlerArenaMod extends Plugin {
                 crawlers = 0;
                 UnitTypes.reign.maxRange = 8000;
                 UnitTypes.reign.defaultController = ArenaAI::new;
-                UnitTypes.reign.speed = 3;
+                UnitTypes.reign.speed = 3f;
                 Unit u = UnitTypes.reign.spawn(Team.crux, 32, 32);
                 u.apply(StatusEffects.boss);
                 u.health = 15000 * Groups.player.size();
@@ -255,7 +255,8 @@ public class CrawlerArenaMod extends Plugin {
                 u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 600 / Groups.player.size(), 0, -32));
                 break;
             case(25):
-                Call.sendMessage("[green]Victory in" + String.valueOf(timer) + "seconds.");
+                UnitTypes.reign.speed = 0.35f;
+                Call.sendMessage("[green]Victory has been achieved in" + String.valueOf(timer) + "seconds.");
                 gameIsOver = true;
                 Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.sharded));}, 2);
             default:
