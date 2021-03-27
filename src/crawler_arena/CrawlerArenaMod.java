@@ -145,7 +145,7 @@ public class CrawlerArenaMod extends Plugin {
                 Call.sendMessage("[cyan]Do /info to view info about upgrading.");
             };
             if(!Groups.unit.contains(u -> {return u.team == Team.crux;}) && !waveIsOver){
-                if(wave < 8 || wave % 4 == 0){
+                if(wave < 8 || wave % 4 != 0){
                     Call.sendMessage("[red]Next wave in 10 seconds.");
                     Timer.schedule(() -> {nextWave();}, 10);
                 }else{
