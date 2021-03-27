@@ -42,6 +42,7 @@ public class CrawlerArenaMod extends Plugin {
     public static int worldCenterX;
     public static int worldCenterY;
     public static boolean firstWaveLaunched = false;
+    public static float timer = 0f;
 
     @Override
     public void init(){
@@ -87,6 +88,7 @@ public class CrawlerArenaMod extends Plugin {
             worldCenterX = worldWidth / 2;
             worldCenterY = worldHeight / 2;
             firstWaveLaunched = false;
+            timer = 0f;
             newGame();
         });
         Events.on(PlayerJoin.class, e -> {
@@ -113,19 +115,6 @@ public class CrawlerArenaMod extends Plugin {
                 };
             };
         });
-        Events.on(UnitDestroyEvent.class, e -> {
-            if(e.unit.team == Team.crux){
-                Timer.schedule(() -> {
-                    if(!Groups.unit.contains(u -> {return u.team == Team.crux;}) && !waveIsOver && !gameIsOver){
-                        Call.sendMessage("[red]Next wave in 10 seconds.");
-                        respawnPlayers();
-                        Timer.schedule(() -> {nextWave();}, 10);
-                        waveIsOver = true;
-                        money.each((p, m) -> {m[0] += Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 5f;});
-                    }
-                }, 1);
-            }
-        });
 
         Events.run(Trigger.update, () -> {
             boolean doGameOver = !Groups.unit.contains(u -> {return u.team == Team.sharded;});
@@ -138,8 +127,16 @@ public class CrawlerArenaMod extends Plugin {
                 Groups.unit.each(u -> {u.kill();});
                 return;
             };
-            if(Mathf.chance(1 / 8000 * Time.delta)){
+            timer += Time.delta / 60;
+            if(Mathf.chance(1 / 3000 * Time.delta)){
                 Call.sendMessage("[cyan]Do /info to view info about upgrading.");
+            };
+            if(!Groups.unit.contains(u -> {return u.team == Team.crux;}) && !waveIsOver && !gameIsOver){
+                Call.sendMessage("[red]Next wave in 10 seconds.");
+                respawnPlayers();
+                Timer.schedule(() -> {nextWave();}, 10);
+                waveIsOver = true;
+                money.each((p, m) -> {m[0] += Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 5f;});
             };
             Groups.player.each(p -> {
                 try{
@@ -258,7 +255,7 @@ public class CrawlerArenaMod extends Plugin {
                 u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, 60, 0, -32));
                 break;
             case(25):
-                Call.sendMessage("[green]Victory.");
+                Call.sendMessage("[green]Victory in" + String.valueOf(timer) + "seconds.");
                 gameIsOver = true;
                 Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.sharded));}, 2);
             default:
