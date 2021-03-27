@@ -21,9 +21,14 @@ import arc.util.CommandHandler;
 import mindustry.ai.types.*;
 import mindustry.entities.abilities.*;
 import ArenaAI.*;
+import ReinforcementAI.*;
 import mindustry.ai.Pathfinder;
 import arc.Core.*;
 import mindustry.content.StatusEffects;
+import mindustry.world.blocks.payloads.*;
+import mindustry.world.Block;
+import mindustry.entities.comp.*;
+import arc.util.Log;
 
 public class CrawlerArenaMod extends Plugin {
 
@@ -34,6 +39,9 @@ public class CrawlerArenaMod extends Plugin {
     public static Seq<UnitType> upgradeableUnits = new Seq<>();
     public static ObjectMap<String, UnitType> upgradeableUnitNames = new ObjectMap<>();
     public static Seq<int[]> unitCostsBase = new Seq<>();
+    public static Seq<Block> bringableBlocks = new Seq<>();
+    public static Seq<int[]> bringableBlockAmounts = new Seq<>();
+    public static ObjectMap<Block, int[]> aidBlockAmounts = new ObjectMap<>();
     public static ObjectMap<UnitType, int[]> unitCosts = new ObjectMap<>();
     public static boolean waveIsOver = false;
     public static String unitNames = "";
@@ -46,12 +54,19 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
+        Log.info("Crawler arena loading start...");
         unitCostsBase.addAll(new int[]{200}, new int[]{200}, new int[]{325}, new int[]{75}, new int[]{400}, new int[]{1500}, new int[]{2750}, new int[]{1500}, new int[]{3000}, new int[]{1500}, new int[]{2500}, new int[]{12000}, new int[]{15000}, new int[]{30000}, new int[]{30000}, new int[]{30000}, new int[]{40000}, new int[]{175000}, new int[]{250000}, new int[]{325000}, new int[]{250000}, new int[]{1500000});
         upgradeableUnits.addAll(UnitTypes.mace, UnitTypes.atrax, UnitTypes.pulsar, UnitTypes.flare, UnitTypes.risso, UnitTypes.fortress, UnitTypes.quasar, UnitTypes.spiroct, UnitTypes.zenith, UnitTypes.mega, UnitTypes.crawler, UnitTypes.quad, UnitTypes.vela, UnitTypes.scepter, UnitTypes.antumbra, UnitTypes.arkyid, UnitTypes.sei, UnitTypes.eclipse, UnitTypes.reign, UnitTypes.toxopid, UnitTypes.corvus, UnitTypes.omura);
         upgradeableUnits.each(u -> {
-            unitCosts.put(u, new int[]{unitCostsBase.get(0)[0]});
+            unitCosts.put(u, unitCostsBase.get(0));
             upgradeableUnitNames.put(u.name, u);
             unitCostsBase.remove(0);
+        });
+        bringableBlocks.addAll(Blocks.liquidSource, Blocks.swarmer, Blocks.cyclone, Blocks.tsunami, Blocks.powerSource, Blocks.lancer, Blocks.arc, Blocks.thoriumWallLarge, Blocks.mendProjector, Blocks.spectre, Blocks.overdriveDome);
+        bringableBlockAmounts.addAll(new int[]{4}, new int[]{2}, new int[]{1}, new int[]{2}, new int[]{4}, new int[]{2}, new int[]{4}, new int[]{6}, new int[]{2}, new int[]{1}, new int[]{1});
+        bringableBlocks.each(b -> {
+            aidBlockAmounts.put(b, bringableBlockAmounts.get(0));
+            bringableBlockAmounts.remove(0);
         });
         upgradeableUnits.each(u -> {
             unitNames += u.name + " " + unitCosts.get(u)[0] + ", ";
@@ -74,6 +89,7 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.arkyid.maxRange = 8000;
         UnitTypes.toxopid.defaultController = ArenaAI::new;
         UnitTypes.toxopid.maxRange = 8000;
+        UnitTypes.mega.defaultController = ReinforcementAI::new;
 
         Events.on(WorldLoadEvent.class, e -> {
             if(Team.sharded.core() != null){
@@ -88,6 +104,7 @@ public class CrawlerArenaMod extends Plugin {
             worldCenterX = worldWidth / 2;
             worldCenterY = worldHeight / 2;
             firstWaveLaunched = false;
+            waveIsOver = true;
             timer = 0f;
             newGame();
         });
@@ -118,23 +135,25 @@ public class CrawlerArenaMod extends Plugin {
 
         Events.run(Trigger.update, () -> {
             boolean doGameOver = !Groups.unit.contains(u -> {return u.team == Team.sharded;});
-            if(gameIsOver){
-                return;
-            } else if(doGameOver){
+            if(doGameOver && !gameIsOver){
                 Call.sendMessage("[red]You have lost.");
                 gameIsOver = true;
                 Timer.schedule(() -> {Events.fire(new GameOverEvent(Team.crux));}, 2);
-                Groups.unit.each(u -> {u.kill();});
-                return;
             };
             timer += Time.delta / 60;
             if(Mathf.chance(1 / 3000 * Time.delta)){
                 Call.sendMessage("[cyan]Do /info to view info about upgrading.");
             };
-            if(!Groups.unit.contains(u -> {return u.team == Team.crux;}) && !waveIsOver && !gameIsOver){
-                Call.sendMessage("[red]Next wave in 10 seconds.");
+            if(!Groups.unit.contains(u -> {return u.team == Team.crux;}) && !waveIsOver){
+                if(wave < 8 || wave % 4 == 0){
+                    Call.sendMessage("[red]Next wave in 10 seconds.");
+                    Timer.schedule(() -> {nextWave();}, 10);
+                }else{
+                    Call.sendMessage("[yellow]Next wave in 40 seconds.");
+                    Timer.schedule(() -> {spawnReinforcements();}, 2);
+                    Timer.schedule(() -> {nextWave();}, 40);
+                };
                 respawnPlayers();
-                Timer.schedule(() -> {nextWave();}, 10);
                 waveIsOver = true;
                 money.each((p, m) -> {m[0] += Mathf.pow(2.71f, 1f + wave / 2 + Mathf.pow(wave, 2) / 4000f) * 5f;});
             };
@@ -146,6 +165,7 @@ public class CrawlerArenaMod extends Plugin {
                 };
             });
         });
+        Log.info("Crawler arena loaded.");
     }
 
     public void newGame(){
@@ -159,21 +179,53 @@ public class CrawlerArenaMod extends Plugin {
         };
         state.wave = 1;
         wave = 1;
-        Timer.schedule(()->{gameIsOver = false;}, 1);
+        Timer.schedule(()->{gameIsOver = false;}, 5);
         UnitTypes.crawler.speed = 0.43f;
         UnitTypes.crawler.health = 60;
         units.clear();
         money.clear();
         setupUnits();
+        rewritePlayers();
         respawnPlayers();
         Call.sendMessage("[red]First wave in 15 seconds.");
         Timer.schedule(() -> {nextWave();}, 15);
         firstWaveLaunched = true;
     }
 
+    public void spawnReinforcements(){
+        Call.sendMessage("[green]Aid package on its way.");
+        Seq<Unit> megas = new Seq<>();
+        ObjectMap<Block, int[]> blocks = new ObjectMap<>();
+        for(int i = 0; i < wave; i += 2){
+              megas.add(UnitTypes.mega.spawn(32, worldCenterY + Mathf.random(-80, 80)));
+        };
+        int capacity = megas.size;
+        int itemSources = Mathf.ceil(wave / 10f);
+        for(int i = 0; i < itemSources; i++){blocks.put(Blocks.itemSource, new int[]{4});};
+        capacity -= itemSources;
+        for(int i = 0; i < capacity; i++){
+            int blockID = Mathf.random(0, bringableBlocks.size - 1);
+            Block block = bringableBlocks.get(blockID);
+            blocks.put(block, aidBlockAmounts.get(block));
+        };
+        blocks.each((b, a) -> {
+            for(int i = 0; i < a[0]; i++){
+                Unit mega = megas.get(0);
+                if(mega instanceof Payloadc){
+                    Payloadc pay = (Payloadc)mega;
+                    pay.addPayload(new BuildPayload(b, Team.sharded));
+                };
+            };
+            megas.remove(0);
+        });
+    }
+
     public void setupUnits(){
         Groups.player.each(p -> {
-            p.unit().kill();
+            UnitType type = p.unit().type;
+            if(type == UnitTypes.gamma || type == UnitTypes.beta || type == UnitTypes.alpha){
+                p.unit().destroy();
+            };
             units.put(p.uuid(), UnitTypes.dagger.create(Team.sharded));
             money.put(p.uuid(), new float[]{10f});
         });
@@ -193,7 +245,7 @@ public class CrawlerArenaMod extends Plugin {
     public void respawnPlayers(){
         Groups.unit.each(u -> {
             if(findPlayer(u) == null){
-                u.kill();
+                u.destroy();
             };
         });
         Groups.player.each(p -> {
