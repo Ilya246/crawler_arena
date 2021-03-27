@@ -12,7 +12,6 @@ import mindustry.world.blocks.liquid.*;
 import mindustry.world.meta.*;
 import mindustry.ai.types.*;
 import mindustry.ai.Pathfinder;
-import arc.*;
 import arc.func.*;
 import arc.struct.*;
 import arc.util.*;
@@ -22,6 +21,8 @@ import mindustry.content.*;
 import mindustry.core.*;
 import mindustry.game.*;
 import mindustry.world.meta.*;
+import mindustry.world.blocks.payloads.*;
+import mindustry.entities.comp.*;
 
 import static mindustry.Vars.*;
 
@@ -54,6 +55,9 @@ public class ReinforcementAI extends GroundAI{
       };
       if(Math.abs(unit.x - world.width() * 4) > 120){
           unit.moveAt(new Vec2().trns(Mathf.atan2(world.width() * 4 - unit.x, world.height() * 4 - unit.y), unit.speed()));
+      }else if(unit instanceof Payloadc){
+          Payloadc pay = (Payloadc)unit;
+          pay.dropLastPayload();
       };
       if(unit.moving()) unit.lookAt(unit.vel().angle());
       unit.controlWeapons(rotate, shoot);
