@@ -26,7 +26,10 @@ import mindustry.ai.Pathfinder;
 import arc.Core.*;
 import mindustry.content.StatusEffects;
 import mindustry.world.blocks.payloads.*;
+import mindustry.world.blocks.*;
+import mindustry.world.blocks.ConstructBlock.*;
 import mindustry.world.Block;
+import mindustry.world.Tile.*;
 import mindustry.entities.comp.*;
 import arc.util.Log;
 
@@ -130,6 +133,14 @@ public class CrawlerArenaMod extends Plugin {
                     };
                     e.player.unit(oldUnit);
                 };
+            };
+        });
+        Events.on(BlockBuildBeginEvent.class, e -> {
+            Building build = e.tile.build;
+            if(e.breaking && build instanceof ConstructBuild){
+                ConstructBuild cbuild = (ConstructBuild)build;
+                Block block = cbuild.cblock;
+                e.tile.setNet(block, Team.sharded, 0);
             };
         });
 
