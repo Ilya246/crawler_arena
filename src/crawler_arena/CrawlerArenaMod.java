@@ -65,14 +65,15 @@ public class CrawlerArenaMod extends Plugin {
             upgradeableUnitNames.put(u.name, u);
             unitCostsBase.remove(0);
         });
-        bringableBlocks.addAll(Blocks.liquidSource, Blocks.swarmer, Blocks.cyclone, Blocks.tsunami, Blocks.powerSource, Blocks.lancer, Blocks.arc, Blocks.thoriumWallLarge, Blocks.mendProjector, Blocks.spectre, Blocks.overdriveDome);
-        bringableBlockAmounts.addAll(new int[]{4}, new int[]{2}, new int[]{1}, new int[]{2}, new int[]{4}, new int[]{2}, new int[]{4}, new int[]{6}, new int[]{2}, new int[]{1}, new int[]{1});
+        bringableBlocks.addAll(Blocks.liquidSource, Blocks.swarmer, Blocks.cyclone, Blocks.tsunami, Blocks.powerSource, Blocks.lancer, Blocks.arc, Blocks.thoriumWallLarge, Blocks.mendProjector, Blocks.spectre, Blocks.overdriveDome, Blocks.forceProjector);
+        bringableBlockAmounts.addAll(new int[]{4}, new int[]{2}, new int[]{1}, new int[]{2}, new int[]{4}, new int[]{4}, new int[]{8}, new int[]{10}, new int[]{2}, new int[]{1}, new int[]{1}, new int[]{1});
         bringableBlocks.each(b -> {
             aidBlockAmounts.put(b, bringableBlockAmounts.get(0));
             bringableBlockAmounts.remove(0);
         });
         upgradeableUnits.each(u -> {
             unitNames += u.name + " " + unitCosts.get(u)[0] + ", ";
+            u.defaultController = FlyingAI::new;
         });
 
         UnitTypes.crawler.maxRange = 8000;
@@ -162,10 +163,11 @@ public class CrawlerArenaMod extends Plugin {
                 if(wave < 8 || wave % 2 != 0){
                     Call.sendMessage("[red]Next wave in 10 seconds.");
                     Timer.schedule(() -> {nextWave();}, 10);
+                    Timer.schedule(() -> {syncPlayers();}, 3);
                 }else{
-                    Call.sendMessage("[yellow]Next wave in 40 seconds.");
+                    Call.sendMessage("[yellow]Next wave in " + String.valueOf(50 + wave * 3) + " seconds.");
                     Timer.schedule(() -> {spawnReinforcements();}, 2);
-                    Timer.schedule(() -> {nextWave();}, 40);
+                    Timer.schedule(() -> {nextWave();}, 50 + wave * 3);
                 };
                 respawnPlayers();
                 waveIsOver = true;
@@ -179,7 +181,7 @@ public class CrawlerArenaMod extends Plugin {
                 };
             });
         });
-        Log.info("Crawler arena loaded.");
+        Log.info("Crawler arena loaded. Server commands: /killEnemies - kills all enemies.");
     }
 
     public void newGame(){
@@ -210,8 +212,11 @@ public class CrawlerArenaMod extends Plugin {
         Call.sendMessage("[green]Aid package on its way.");
         Seq<Unit> megas = new Seq<>();
         ObjectMap<Block, int[]> blocks = new ObjectMap<>();
-        for(int i = 0; i < wave; i += 2){
-              megas.add(UnitTypes.mega.spawn(32, worldCenterY + Mathf.random(-80, 80)));
+        for(int i = 0; i < wave * 2; i += 3){
+              Unit u = UnitTypes.mega.spawn(32, worldCenterY + Mathf.random(-80, 80));
+              u.health = 999999;
+              u.team = Team.blue;
+              megas.add(u);
         };
         int capacity = megas.size;
         int itemSources = Mathf.ceil(wave / 10f);
@@ -232,6 +237,7 @@ public class CrawlerArenaMod extends Plugin {
             };
             megas.remove(0);
         });
+        Timer.schedule(()->{syncPlayers();}, worldCenterX / 90);
     }
 
     public void setupUnits(){
@@ -294,6 +300,11 @@ public class CrawlerArenaMod extends Plugin {
         });
     }
 
+    public void syncPlayers(){
+      Call.worldDataBegin();
+      Groups.player.each(p -> {netServer.sendWorldData(p);});
+    }
+
     public void nextWave(){
         wave++;
         Timer.schedule(()->{waveIsOver = false;}, 1);
@@ -329,8 +340,6 @@ public class CrawlerArenaMod extends Plugin {
             default:
                 break;
         };
-        Call.worldDataBegin();
-        Groups.player.each(p -> {netServer.sendWorldData(p);});
         int atraxes = 0;
         int spirocts = 0;
         int arkyids = 0;
@@ -453,6 +462,16 @@ public class CrawlerArenaMod extends Plugin {
         });
         handler.<Player>register("uinfo", "Prints information about units changed by the gamemode.", (args, player) -> {
             player.sendMessage("Crawler - spawns 1 crawler per second, 400 hp, 10 armor\nOmura - [red]find out for yourself\n[white]Fortress - 1200 health, 20 armor");
+        });
+    }
+
+    public void registerServerCommands(CommandHandler handler){
+        handler.register("killEnemies", "Kills all enemies in the current wave.", (args) -> {
+            Groups.unit.each(u -> {
+                if(u.team == Team.crux){
+                    u.kill();
+                };
+            });
         });
     }
 }
