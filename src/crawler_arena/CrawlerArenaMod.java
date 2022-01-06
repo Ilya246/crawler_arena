@@ -437,7 +437,13 @@ public class CrawlerArenaMod extends Plugin {
             StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
             IntSeq sortedUnitCosts = unitCosts.values().toArray();
             sortedUnitCosts.sort();
-            sortedUnitCosts.each((cost) -> upgrades.append("[gold] - [accent]").append(unitCosts.findKey(cost).name).append(" [lightgray](").append(cost).append(")\n"));
+            ObjectIntMap<UnitType> unitCostsCopy = new ObjectIntMap<>();
+            unitCostsCopy.putAll(unitCosts);
+            sortedUnitCosts.each((cost) -> {
+                UnitType type = unitCostsCopy.findKey(cost);
+                upgrades.append("[gold] - [accent]").append(type.name).append(" [lightgray](").append(cost).append(")\n");
+                unitCostsCopy.remove(type);
+            });
             player.sendMessage(upgrades.toString());
         });
     }
