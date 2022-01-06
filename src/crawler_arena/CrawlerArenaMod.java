@@ -241,7 +241,8 @@ public class CrawlerArenaMod extends Plugin {
         Bundle.sendToChat("events.aid");
         Seq<Unit> megas = new Seq<>();
         ObjectMap<Block, Integer> blocks = new ObjectMap<>();
-        for (int i = 0; i < Math.min(wave * reinforcementScaling * statScaling, reinforcementMax); i += reinforcementFactor){
+        int megasFactor = (int)Math.min(wave * reinforcementScaling * statScaling, reinforcementMax);
+        for (int i = 0; i < megasFactor; i += reinforcementFactor){
             Unit u = UnitTypes.mega.spawn(reinforcementTeam, 32, worldCenterY + Mathf.random(-80, 80));
             u.health = Integer.MAX_VALUE;
             megas.add(u);
@@ -317,7 +318,7 @@ public class CrawlerArenaMod extends Plugin {
     public void nextWave(){
         wave++;
         state.wave = wave;
-        statScaling = 1f + wave / statScalingNormal;
+        statScaling = 1f + wave * statScalingNormal;
         Timer.schedule(() -> waveIsOver = false, 1f);
 
         int crawlers = Mathf.ceil(Mathf.pow(crawlersExpBase, 1f + wave * crawlersRamp + Mathf.pow(wave, 2f) * extraCrawlersRamp) * Groups.player.size() * crawlersMultiplier);
@@ -334,7 +335,7 @@ public class CrawlerArenaMod extends Plugin {
             Bundle.sendToChat("events.victory", Time.timeSinceMillis(timer));
         }
 
-        if(crawlers > crawlersCeiling){
+        if(crawlers > crawlersCeiling && wave > bossWave){
             crawlers = crawlersCeiling;
             statScaling = 1f + (float)(wave - bossWave) * extraScalingRamp;
         }
@@ -356,6 +357,7 @@ public class CrawlerArenaMod extends Plugin {
         crawlers = Math.min(crawlers, keepCrawlers);
 
         typeCounts.forEach(entry -> spawnEnemies(entry.key, entry.value, spreadX, spreadY));
+        spawnEnemies(UnitTypes.crawler, crawlers, spreadX, spreadY);
     }
 
     public void spawnEnemies(UnitType unit, int amount, int spX, int spY){
