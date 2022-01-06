@@ -12,9 +12,9 @@ public class CVars{
     public static int maxUnits = 2000;
     public static int keepCrawlers = 800;
     public static float crawlersExpBase = 2.71f;
-    public static float crawlersRamp = 1f / 3f;
+    public static float crawlersRamp = 1f / 2f;
     public static float extraCrawlersRamp = 1f / 150f;
-    public static float crawlersMultiplier = 1f / 20f;
+    public static float crawlersMultiplier = 1f / 10f;
 
     public static float moneyExpBase = 2.71f;
     public static float moneyRamp = 1f / 2f;
