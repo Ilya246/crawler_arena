@@ -352,7 +352,7 @@ public class CrawlerArenaMod extends Plugin {
             int typeCount = Math.min(crawlers / enemyCrawlerCuts.get(type), totalTarget / 2);
             totalTarget -= typeCount;
             typeCounts.put(type, typeCount);
-            crawlers -= typeCount;
+            crawlers -= typeCount * enemyCrawlerCuts.get(type) / 2;
         }
         crawlers = Math.min(crawlers, keepCrawlers);
 
@@ -435,7 +435,9 @@ public class CrawlerArenaMod extends Plugin {
 
         handler.<Player>register("upgrades", "commands.upgrades.description", (args, player) -> {
             StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
-            unitCosts.forEach((entry) -> upgrades.append("[gold] - [accent]").append(entry.key.name).append(" [lightgray](").append(entry.value).append(")\n"));
+            IntSeq sortedUnitCosts = unitCosts.values().toArray();
+            sortedUnitCosts.sort();
+            sortedUnitCosts.each((cost) -> upgrades.append("[gold] - [accent]").append(unitCosts.findKey(cost).name).append(" [lightgray](").append(cost).append(")\n"));
             player.sendMessage(upgrades.toString());
         });
     }
