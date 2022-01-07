@@ -31,80 +31,14 @@ public class CrawlerArenaMod extends Plugin {
     public static int worldWidth, worldHeight, worldCenterX, worldCenterY, wave = 1;
     public static float statScaling = 1f;
 
-    public static ObjectIntMap<UnitType> unitCosts = new ObjectIntMap<>();
     public static ObjectIntMap<String> money = new ObjectIntMap<>();
     public static ObjectMap<String, UnitType> units = new ObjectMap<>();
     public static ObjectIntMap<String> unitIDs = new ObjectIntMap<>();
-    public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
 
     public static long timer = Time.millis();
 
     @Override
     public void init(){
-        unitCosts.putAll(UnitTypes.nova, 100,
-        UnitTypes.pulsar, 300,
-        UnitTypes.quasar, 2000,
-        UnitTypes.vela, 15000,
-        UnitTypes.corvus, 250000,
-
-        UnitTypes.dagger, 25,
-        UnitTypes.mace, 200,
-        UnitTypes.fortress, 1500,
-        UnitTypes.scepter, 20000,
-        UnitTypes.reign, 250000,
-
-        UnitTypes.crawler, 7500,
-        UnitTypes.atrax, 250,
-        UnitTypes.spiroct, 1500,
-        UnitTypes.arkyid, 25000,
-        UnitTypes.toxopid, 325000,
-
-        UnitTypes.flare, 75,
-        UnitTypes.horizon, 250,
-        UnitTypes.zenith, 2500,
-        UnitTypes.antumbra, 18000,
-        UnitTypes.eclipse, 175000,
-
-        UnitTypes.retusa, 400,
-        UnitTypes.oxynoe, 850,
-        UnitTypes.cyerce, 5000,
-        UnitTypes.aegires, 30000,
-        UnitTypes.navanax, 350000,
-
-        UnitTypes.risso, 500,
-        UnitTypes.minke, 750,
-        UnitTypes.bryde, 5000,
-        UnitTypes.sei, 75000,
-        UnitTypes.omura, 1500000,
-
-        UnitTypes.mono, 3750000,
-        UnitTypes.poly, 100000,
-        UnitTypes.mega, 2500,
-        UnitTypes.quad, 25000,
-        UnitTypes.oct, 250000);
-
-        aidBlockAmounts.putAll(Blocks.liquidSource, 4,
-        Blocks.powerSource, 4,
-        Blocks.itemSource, 6,
-        Blocks.constructor, 1,
-                               
-        Blocks.thoriumWallLarge, 8,
-        Blocks.surgeWallLarge, 4,
-
-        Blocks.mendProjector, 3,
-        Blocks.forceProjector, 2,
-        Blocks.repairPoint, 4,
-        Blocks.repairTurret, 2,
-
-        Blocks.arc, 6,
-        Blocks.lancer, 4,
-        Blocks.ripple, 2,
-        Blocks.cyclone, 1,
-        Blocks.swarmer, 2,
-        Blocks.tsunami, 1,
-        Blocks.spectre, 1,
-        Blocks.foreshadow, 1);
-
         content.units().each(u -> u.defaultController = FlyingAI::new);
         UnitTypes.crawler.defaultController = ArenaAI::new;
         UnitTypes.atrax.defaultController = ArenaAI::new;
@@ -233,7 +167,6 @@ public class CrawlerArenaMod extends Plugin {
                     respawnPlayer(p);
                     money.put(p.uuid(), (int)(money.get(p.uuid(), 0) + Mathf.pow(moneyExpBase, 1f + wave * moneyRamp + Mathf.pow(wave, 2) * extraMoneyRamp) * moneyMultiplier));
                 });
-                Groups.unit.each(u -> !u.isPlayer() && unitIDs.containsValue(u.id), Unit::kill);
                 waveIsOver = true;
             }
             if(!waveIsOver){
@@ -275,8 +208,14 @@ public class CrawlerArenaMod extends Plugin {
         }
 
         for (int i = 0; i < megas.size; i++){
-            Block block = Seq.with(aidBlockAmounts.keys()).get(Mathf.random(0, aidBlockAmounts.size - 1));
-            blocks.put(block, aidBlockAmounts.get(block));
+            Block block;
+            if(Mathf.chance(rareAidChance / aidBlockAmounts.size)){
+                block = Seq.with(rareAidBlockAmounts.keys()).random();
+                blocks.put(block, rareAidBlockAmounts.get(block));
+            }else{
+                block = Seq.with(aidBlockAmounts.keys()).random();
+                blocks.put(block, aidBlockAmounts.get(block));
+            }
         }
 
         blocks.each((block, amount) -> {
@@ -289,8 +228,11 @@ public class CrawlerArenaMod extends Plugin {
     }
 
     public void respawnPlayer(Player p){
-        if(p.unit().id != unitIDs.get(p.uuid(), -1)) p.unit().kill();
         if(p.dead() || p.unit().id != unitIDs.get(p.uuid())){
+            Unit oldUnit = Groups.unit.getByID(unitIDs.get(p.uuid()));
+            if(oldUnit != null && oldUnit != p.unit()){
+                oldUnit.kill();
+            }
             Tile tile = world.tile(worldCenterX / 8 + Mathf.random(-3, 3), worldCenterY / 8 + Mathf.random(-3, 3));
             UnitType type = units.get(p.uuid());
             if(type == null){ // why does this happen
@@ -451,18 +393,38 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("upgrade", "<type>", "Upgrade to another unit", (args, player) -> {
+        handler.<Player>register("upgrade", "<type> [amount]", "Upgrade to another unit", (args, player) -> {
             UnitType newUnitType = Seq.with(unitCosts.keys()).find(u -> u.name.equalsIgnoreCase(args[0]));
             if(newUnitType == null){
                 Bundle.bundled(player, "commands.upgrade.unit-not-found");
                 return;
             }
+            int amount = 1;
+            if(args.length == 2){
+                try{
+                    amount = Integer.parseInt(args[1]);
+                }catch(NumberFormatException e){
+                    Bundle.bundled(player, "exceptions.invalid-amount");
+                    return;
+                }
+            }
+            if(amount < 1){
+                Bundle.bundled(player, "exceptions.invalid-amount");
+                return;
+            }
 
-            if(money.get(player.uuid()) >= unitCosts.get(newUnitType)){
-                if(!player.dead() && player.unit().type == newUnitType){
-                    Unit newUnit = newUnitType.spawn(player.x, player.y);
-                    setUnit(newUnit);
-                    money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType));
+            if(Groups.unit.count(u -> u.type == newUnitType && u.team == state.rules.defaultTeam) > unitCap - amount){
+                Bundle.bundled(player, "commands.upgrade.too-many-units");
+                return;
+            }
+
+            if(money.get(player.uuid()) >= unitCosts.get(newUnitType) * amount){
+                if(!player.dead() && player.unit().type == newUnitType || amount > 1){
+                    for(int i = 0; i < amount; i++){
+                        Unit newUnit = newUnitType.spawn(player.x + Mathf.random(), player.y + Mathf.random());
+                        setUnit(newUnit);
+                    }
+                    money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType) * amount);
                     Bundle.bundled(player, "commands.upgrade.already");
                     return;
                 }
@@ -488,11 +450,11 @@ public class CrawlerArenaMod extends Plugin {
             try{
                 amount = Integer.parseInt(args[0]);
             }catch(NumberFormatException e){
-                Bundle.bundled(player, "commands.give.invalid-amount");
+                Bundle.bundled(player, "exceptions.invalid-amount");
                 return;
             }
             if(amount <= 0){
-                Bundle.bundled(player, "commands.give.invalid-amount");
+                Bundle.bundled(player, "exceptions.invalid-amount");
                 return;
             }
 
