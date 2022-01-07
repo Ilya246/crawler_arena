@@ -86,7 +86,8 @@ public class CrawlerArenaMod extends Plugin {
         aidBlockAmounts.putAll(Blocks.liquidSource, 4,
         Blocks.powerSource, 4,
         Blocks.itemSource, 6,
-
+        Blocks.constructor, 1,
+                               
         Blocks.thoriumWallLarge, 8,
         Blocks.surgeWallLarge, 4,
 
@@ -154,7 +155,6 @@ public class CrawlerArenaMod extends Plugin {
             }
 
             Core.app.post(() -> {
-                content.blocks().each(b -> state.rules.bannedBlocks.add(b));
                 state.rules.canGameOver = false;
                 state.rules.waveTimer = false;
                 state.rules.waves = true;
