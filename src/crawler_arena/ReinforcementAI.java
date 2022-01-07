@@ -6,15 +6,15 @@ import mindustry.ai.types.GroundAI;
 import mindustry.gen.Call;
 import mindustry.gen.Payloadc;
 
-import static mindustry.Vars.world;
+import static mindustry.Vars.*;
 
 public class ReinforcementAI extends GroundAI {
 
     @Override
     public void updateUnit(){
-        if(unit.team == CrawlerArenaMod.reinforcementTeam){
+        if(unit.team == CVars.reinforcementTeam){
             unit.moveAt(new Vec2().trns(Mathf.atan2(world.width() * 4 - unit.x, world.height() * 4 - unit.y), unit.speed()));
-            if(Math.abs(unit.x - world.width() * 4) < 120 && unit instanceof Payloadc){
+            if(unit.x - world.width() * tilesize / 2f > -120f && unit instanceof Payloadc){
                 Call.payloadDropped(unit, unit.x, unit.y);
             }
             if(unit.x > world.width() * 7){

@@ -34,9 +34,8 @@ public class CrawlerArenaMod extends Plugin {
     public static ObjectIntMap<UnitType> unitCosts = new ObjectIntMap<>();
     public static ObjectIntMap<String> money = new ObjectIntMap<>();
     public static ObjectMap<String, UnitType> units = new ObjectMap<>();
+    public static ObjectIntMap<String> unitIDs = new ObjectIntMap<>();
     public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
-
-    public static Team reinforcementTeam = Team.blue;
 
     public static long timer = Time.millis();
 
@@ -54,7 +53,7 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.scepter, 20000,
         UnitTypes.reign, 250000,
 
-        UnitTypes.crawler, 2500,
+        UnitTypes.crawler, 7500,
         UnitTypes.atrax, 250,
         UnitTypes.spiroct, 1500,
         UnitTypes.arkyid, 25000,
@@ -70,7 +69,7 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.oxynoe, 850,
         UnitTypes.cyerce, 5000,
         UnitTypes.aegires, 30000,
-        UnitTypes.navanax, 1500000,
+        UnitTypes.navanax, 350000,
 
         UnitTypes.risso, 500,
         UnitTypes.minke, 750,
@@ -79,7 +78,7 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.omura, 1500000,
 
         UnitTypes.mono, 3750000,
-        UnitTypes.poly, 50000,
+        UnitTypes.poly, 100000,
         UnitTypes.mega, 2500,
         UnitTypes.quad, 25000,
         UnitTypes.oct, 250000);
@@ -93,8 +92,8 @@ public class CrawlerArenaMod extends Plugin {
 
         Blocks.mendProjector, 3,
         Blocks.forceProjector, 2,
-        Blocks.repairTurret, 2,
         Blocks.repairPoint, 4,
+        Blocks.repairTurret, 2,
 
         Blocks.arc, 6,
         Blocks.lancer, 4,
@@ -138,12 +137,12 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.reign.maxRange = 8000f;
 
         UnitTypes.poly.maxRange = 2000f;
-        UnitTypes.omura.health = 45000f;
 
         UnitTypes.reign.speed = 2.5f;
 
-        UnitTypes.poly.abilities.add(new UnitSpawnAbility(UnitTypes.poly, 300f, 0f, -32f));
-        UnitTypes.poly.health = 200f;
+        UnitTypes.poly.abilities.add(new UnitSpawnAbility(UnitTypes.poly, 480f, 0f, -32f));
+        UnitTypes.poly.health = 125f;
+        UnitTypes.poly.speed = 1.5f;
 
         UnitTypes.arkyid.weapons.each(w -> {
             if(w.bullet instanceof SapBulletType sap) sap.sapStrength = 0f;
@@ -159,7 +158,7 @@ public class CrawlerArenaMod extends Plugin {
                 state.rules.canGameOver = false;
                 state.rules.waveTimer = false;
                 state.rules.waves = true;
-                state.rules.unitCap = 128;
+                state.rules.unitCap = unitCap;
                 Call.setRules(state.rules);
             });
 
@@ -176,10 +175,29 @@ public class CrawlerArenaMod extends Plugin {
         Events.on(PlayerJoin.class, event -> {
             if(!money.containsKey(event.player.uuid()) || !units.containsKey(event.player.uuid())){
                 Bundle.bundled(event.player, "events.join.welcome");
-                money.put(event.player.uuid(), 0);
+                money.put(event.player.uuid(), (int)(money.get(event.player.uuid(), 0) + Mathf.pow(moneyExpBase, 1f + wave * moneyRamp + Mathf.pow(wave, 2) * extraMoneyRamp) * moneyMultiplier));
                 units.put(event.player.uuid(), UnitTypes.dagger);
-            }else Bundle.bundled(event.player, "events.join.already-played");
-            respawnPlayer(event.player);
+                respawnPlayer(event.player);
+            }else{
+                Bundle.bundled(event.player, "events.join.already-played");
+                if(unitIDs.containsKey(event.player.uuid())){
+                    Unit swapTo = Groups.unit.getByID(unitIDs.get(event.player.uuid()));
+                    if(swapTo != null){
+                        if(swapTo.getPlayer() != null && unitIDs.containsKey(swapTo.getPlayer().uuid())){
+                            Player intruder = swapTo.getPlayer();
+                            Unit swapIntruderTo = Groups.unit.getByID(unitIDs.get(intruder.uuid()));
+                            if(swapIntruderTo != null){
+                                intruder.unit(swapIntruderTo);
+                            }else{
+                                intruder.clearUnit();
+                            }
+                        }
+                        Timer.schedule(() -> event.player.unit(swapTo), 1f);
+                    }
+                }else{
+                    respawnPlayer(event.player);
+                }
+            }
         });
 
         Events.run(Trigger.update, () -> {
@@ -187,8 +205,13 @@ public class CrawlerArenaMod extends Plugin {
 
             if(!Groups.unit.contains(u -> u.team == state.rules.defaultTeam)){
                 gameIsOver = true;
-                Bundle.sendToChat("events.gameover.lose");
-                Timer.schedule(() -> Events.fire(new GameOverEvent(state.rules.waveTeam)), 2f);
+                if(wave > bossWave){
+                    Bundle.sendToChat("events.gameover.win");
+                    Timer.schedule(() -> Events.fire(new GameOverEvent(state.rules.defaultTeam)), 2f);
+                }else{
+                    Bundle.sendToChat("events.gameover.lose");
+                    Timer.schedule(() -> Events.fire(new GameOverEvent(state.rules.waveTeam)), 2f);
+                }
                 return;
             }
 
@@ -210,8 +233,11 @@ public class CrawlerArenaMod extends Plugin {
                     respawnPlayer(p);
                     money.put(p.uuid(), (int)(money.get(p.uuid(), 0) + Mathf.pow(moneyExpBase, 1f + wave * moneyRamp + Mathf.pow(wave, 2) * extraMoneyRamp) * moneyMultiplier));
                 });
-                Groups.unit.each(u -> !u.isPlayer(), Unit::kill);
+                Groups.unit.each(u -> !u.isPlayer() && unitIDs.containsValue(u.id), Unit::kill);
                 waveIsOver = true;
+            }
+            if(!waveIsOver){
+                enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta);
             }
         });
 
@@ -263,9 +289,13 @@ public class CrawlerArenaMod extends Plugin {
     }
 
     public void respawnPlayer(Player p){
-        if(p.dead()){
+        if(p.unit().id != unitIDs.get(p.uuid(), -1)) p.unit().kill();
+        if(p.dead() || p.unit().id != unitIDs.get(p.uuid())){
             Tile tile = world.tile(worldCenterX / 8 + Mathf.random(-3, 3), worldCenterY / 8 + Mathf.random(-3, 3));
             UnitType type = units.get(p.uuid());
+            if(type == null){ // why does this happen
+                type = UnitTypes.dagger;
+            }
             int x = tile.x;
             if(!type.flying && tile.solid()){
                 while (x > 0 && world.tile(x, tile.y).solid()){
@@ -279,6 +309,7 @@ public class CrawlerArenaMod extends Plugin {
             Unit unit = type.spawn(x * tilesize, tile.worldy());
             setUnit(unit);
             p.unit(unit);
+            unitIDs.put(p.uuid(), unit.id);
             return;
         }
 
@@ -353,6 +384,7 @@ public class CrawlerArenaMod extends Plugin {
             totalTarget -= typeCount;
             typeCounts.put(type, typeCount);
             crawlers -= typeCount * enemyCrawlerCuts.get(type) / 2;
+            type.speed = defaultEnemySpeeds.get(type, 1f);
         }
         crawlers = Math.min(crawlers, keepCrawlers);
 
@@ -387,6 +419,16 @@ public class CrawlerArenaMod extends Plugin {
             unit.apply(StatusEffects.overclock, Float.MAX_VALUE);
             unit.apply(StatusEffects.overdrive, Float.MAX_VALUE);
             if(unit.abilities.find(ability -> ability instanceof UnitSpawnAbility) instanceof UnitSpawnAbility ability) ability.spawnTime = playerPolyCooldown;
+        }else if(unit.type == UnitTypes.omura){
+            unit.maxHealth = playerOmuraHealth;
+            unit.health = unit.maxHealth;
+            unit.armor = playerOmuraArmor;
+            unit.apply(StatusEffects.boss);
+            unit.apply(StatusEffects.overclock, Float.MAX_VALUE);
+            unit.apply(StatusEffects.overdrive, Float.MAX_VALUE);
+            unit.abilities.each(ability -> ability instanceof UnitSpawnAbility, ability -> {
+                if(ability instanceof UnitSpawnAbility spawnAbility) spawnAbility.spawnTime = playerOmuraCooldown;
+            });
         }
         unit.controller(new FlyingAI());
     }
@@ -399,41 +441,73 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.crawler.health = crawlerHealthBase;
         money.clear();
         units.clear();
+        unitIDs.clear();
         Groups.player.each(p -> {
             money.put(p.uuid(), 0);
             units.put(p.uuid(), UnitTypes.dagger);
-            respawnPlayer(p);
+            Timer.schedule(() -> respawnPlayer(p), 1f);
         });
     }
 
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("upgrade", "<type>", "commands.upgrade.description", (args, player) -> {
+        handler.<Player>register("upgrade", "<type>", "Upgrade to another unit", (args, player) -> {
             UnitType newUnitType = Seq.with(unitCosts.keys()).find(u -> u.name.equalsIgnoreCase(args[0]));
             if(newUnitType == null){
                 Bundle.bundled(player, "commands.upgrade.unit-not-found");
                 return;
             }
 
-            if(!player.dead() && player.unit().type == newUnitType){
-                Bundle.bundled(player, "commands.upgrade.already");
-                return;
-            }
-
             if(money.get(player.uuid()) >= unitCosts.get(newUnitType)){
+                if(!player.dead() && player.unit().type == newUnitType){
+                    Unit newUnit = newUnitType.spawn(player.x, player.y);
+                    setUnit(newUnit);
+                    money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType));
+                    Bundle.bundled(player, "commands.upgrade.already");
+                    return;
+                }
                 Unit newUnit = newUnitType.spawn(player.x, player.y);
                 setUnit(newUnit);
                 player.unit(newUnit);
                 money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType));
                 units.put(player.uuid(), newUnitType);
+                unitIDs.put(player.uuid(), newUnit.id);
                 Bundle.bundled(player, "commands.upgrade.success");
 
             }else Bundle.bundled(player, "commands.upgrade.not-enough-money");
         });
 
-        handler.<Player>register("information", "commands.information.description", (args, player) -> Bundle.bundled(player, "commands.info"));
+        handler.<Player>register("give", "<amount> <name...>", "Give money to another player", (args, player) -> {
+            Player giveTo = Groups.player.find(p -> Strings.stripColors(p.name).toLowerCase().contains(args[1].toLowerCase()));
+            if(giveTo == null){
+                Bundle.bundled(player, "commands.give.player-not-found");
+                return;
+            }
 
-        handler.<Player>register("upgrades", "commands.upgrades.description", (args, player) -> {
+            int amount;
+            try{
+                amount = Integer.parseInt(args[0]);
+            }catch(NumberFormatException e){
+                Bundle.bundled(player, "commands.give.invalid-amount");
+                return;
+            }
+            if(amount <= 0){
+                Bundle.bundled(player, "commands.give.invalid-amount");
+                return;
+            }
+
+            if(money.get(player.uuid()) >= amount){
+                money.put(player.uuid(), money.get(player.uuid()) - amount);
+                money.put(giveTo.uuid(), money.get(giveTo.uuid()) + amount);
+                Bundle.bundled(player, "commands.give.success", amount, giveTo.coloredName());
+                Bundle.bundled(giveTo, "commands.give.money-recieved", amount, player.coloredName());
+
+            }else Bundle.bundled(player, "commands.give.not-enough-money");
+        });
+
+        handler.<Player>register("info", "Show info about the Crawler Arena gamemode", (args, player) -> Bundle.bundled(player, "commands.info"));
+
+        handler.<Player>register("upgrades", "Show units you can upgrade to", (args, player) -> {
             StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
             IntSeq sortedUnitCosts = unitCosts.values().toArray();
             sortedUnitCosts.sort();
