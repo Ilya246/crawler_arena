@@ -2,25 +2,27 @@ package crawler_arena;
 
 import arc.Core;
 import arc.Events;
+import arc.graphics.Color;
 import arc.math.Mathf;
 import arc.struct.*;
 import arc.util.*;
+import arc.util.pooling.Pools;
 import mindustry.ai.types.FlyingAI;
-import mindustry.content.Blocks;
-import mindustry.content.StatusEffects;
-import mindustry.content.UnitTypes;
+import mindustry.content.*;
 import mindustry.entities.abilities.UnitSpawnAbility;
 import mindustry.entities.bullet.SapBulletType;
+import mindustry.entities.units.*;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.graphics.Pal;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration;
-import mindustry.type.UnitType;
+import mindustry.type.*;
 import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.payloads.BuildPayload;
+import mindustry.world.blocks.storage.CoreBlock;
 
 import static mindustry.Vars.*;
 import static crawler_arena.CVars.*;
@@ -170,7 +172,7 @@ public class CrawlerArenaMod extends Plugin {
                 waveIsOver = true;
             }
             if(!waveIsOver){
-                enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta);
+                enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta * statScaling);
             }
         });
 
@@ -215,6 +217,35 @@ public class CrawlerArenaMod extends Plugin {
             }else{
                 block = Seq.with(aidBlockAmounts.keys()).random();
                 blocks.put(block, aidBlockAmounts.get(block));
+            }
+            if(block instanceof CoreBlock || Mathf.chance(blockDropChance)){
+                int range = 10;
+                int x = 0;
+                int y = 0;
+                boolean valid = false;
+                int j = 0;
+                while((!valid && j < 100) || world.tile(x, y) == null){
+                    x = world.width() / 2 + Mathf.random(-range, range);
+                    y = world.height() / 2 + Mathf.random(-range, range);
+                    valid = true;
+                    for(int xi = x - (block.size - 1) / 2; xi <= x + block.size / 2; xi++){
+                        for(int yi = y - (block.size - 1) / 2; yi <= y + block.size / 2; yi++){
+                            if(world.tile(xi, yi).build != null){
+                                valid = false;
+                            }
+                        }
+                    }
+                    range++;
+                    j++;
+                }
+                final float xf = x * tilesize;
+                final float yf = y * tilesize; // why did it require me to final these
+                Call.effect(Fx.blockCrash, xf, yf, 0, Color.white, block);
+                Time.run(100f, () -> {
+                    Call.soundAt(Sounds.explosionbig, xf, yf, 1, 1);
+                    Call.effect(Fx.spawnShockwave, xf, yf, block.size * 60f, Color.white);
+                    world.tileWorld(xf, yf).setNet(block, state.rules.defaultTeam, 0);
+                });
             }
         }
 
@@ -261,6 +292,31 @@ public class CrawlerArenaMod extends Plugin {
         }
     }
 
+    public void applyStatus(Unit unit, float duration, int amount, StatusEffect... effects){
+        Seq<StatusEntry> entries = new Seq<>();
+        for(int i = 0; i < amount; i++){
+            for(StatusEffect effect : effects){
+                StatusEntry entry = Pools.obtain(StatusEntry.class, StatusEntry::new);
+                entry.set(effect, duration);
+                entries.add(entry);
+            }
+        }
+        var fields = unit.getClass().getFields();
+        for(var field : fields){
+            if(field.getName().equals("statuses")){
+                try{
+                    if(field.get(unit) instanceof Seq s){
+                        s.addAll(entries);
+                    }
+                }catch(Exception e){
+                }
+            }
+        }
+    }
+    public void applyStatus(Unit unit, float duration, StatusEffect... effects){
+        applyStatus(unit, duration, 1, effects);
+    }
+
     public void spawnEnemy(UnitType unit, int spX, int spY){
         int sX = 32;
         int sY = 32;
@@ -279,11 +335,25 @@ public class CrawlerArenaMod extends Plugin {
 
         Unit u = unit.spawn(state.rules.waveTeam, sX, sY);
         u.armor = 0f;
-        u.maxHealth *= (statScaling * healthMultiplierBase * (unit == UnitTypes.reign ? bossHealthMultiplier : 1f));
+        u.maxHealth *= statScaling * healthMultiplierBase;
         u.health = u.maxHealth;
+        if(statScaling >= 2f){
+            applyStatus(u, Float.MAX_VALUE, (int)statScaling / 2, StatusEffects.overdrive, StatusEffects.overclock);
+        }
 
         if(unit == UnitTypes.reign){
             u.apply(StatusEffects.boss);
+            if(Groups.player.size() > bossT1Cap){
+                u.apply(StatusEffects.overclock);
+            }
+            if(Groups.player.size() > bossT2Cap){
+                u.apply(StatusEffects.overdrive);
+            }
+            if(Groups.player.size() > bossT3Cap){
+                applyStatus(u, Float.MAX_VALUE, StatusEffects.overdrive, StatusEffects.overclock);
+            }
+            u.maxHealth *= bossHealthMultiplier * Mathf.sqrt(Groups.player.size());
+            u.health = u.maxHealth;
             u.abilities.add(new UnitSpawnAbility(UnitTypes.scepter, bossScepterDelayBase / Groups.player.size(), 0, -32));
         }
     }
@@ -311,6 +381,7 @@ public class CrawlerArenaMod extends Plugin {
         if(crawlers > crawlersCeiling && wave > bossWave){
             crawlers = crawlersCeiling;
             statScaling = 1f + (float)(wave - bossWave) * extraScalingRamp;
+            statScaling = Mathf.pow(statScaling, 1.5f);
         }
 
         UnitTypes.crawler.health += crawlerHealthRamp * wave * statScaling;
@@ -351,8 +422,10 @@ public class CrawlerArenaMod extends Plugin {
             unit.maxHealth = playerMonoHealth;
             unit.health = unit.maxHealth;
             unit.armor = playerMonoArmor;
-            unit.abilities.add(new UnitSpawnAbility(UnitTypes.navanax, playerMonoCooldown, 0f, -8f));
+            unit.abilities.add(new UnitSpawnAbility(playerMonoSpawnTypes.random(), playerMonoCooldown, 0f, -8f));
             unit.apply(StatusEffects.boss);
+            unit.apply(StatusEffects.overclock, Float.MAX_VALUE);
+            unit.apply(StatusEffects.overdrive, Float.MAX_VALUE);
         }else if(unit.type == UnitTypes.poly){
             unit.maxHealth = playerPolyHealth;
             unit.health = unit.maxHealth;
@@ -371,6 +444,12 @@ public class CrawlerArenaMod extends Plugin {
             unit.abilities.each(ability -> ability instanceof UnitSpawnAbility, ability -> {
                 if(ability instanceof UnitSpawnAbility spawnAbility) spawnAbility.spawnTime = playerOmuraCooldown;
             });
+        }else if(unit.type == UnitTypes.dagger && Mathf.chance(ultraDaggerChance)){
+            unit.maxHealth = ultraDaggerHealth;
+            unit.health = unit.maxHealth;
+            unit.armor = ultraDaggerArmor;
+            unit.abilities.add(new UnitSpawnAbility(UnitTypes.dagger, ultraDaggerCooldown, 0f, -1f));
+            applyStatus(unit, Float.MAX_VALUE, 2, StatusEffects.overclock, StatusEffects.overdrive, StatusEffects.boss);
         }
         unit.controller(new FlyingAI());
     }

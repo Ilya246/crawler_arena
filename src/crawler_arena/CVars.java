@@ -43,6 +43,7 @@ public class CVars{
     public static int reinforcementScaling = 2;
     public static int reinforcementMax = 60 * reinforcementFactor;
     public static float rareAidChance = 1f / 5f;
+    public static float blockDropChance = 1f / 25f;
 
     public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
     public static ObjectIntMap<Block> rareAidBlockAmounts = new ObjectIntMap<>();
@@ -52,14 +53,19 @@ public class CVars{
     public static float playerCrawlerArmor = 10f;
     public static float playerCrawlerCooldown = 60f;
     public static float playerMonoHealth = 100000f;
-    public static float playerMonoArmor = 10f;
+    public static float playerMonoArmor = 20f;
     public static float playerMonoCooldown = 300f;
+    public static Seq<UnitType> playerMonoSpawnTypes = Seq.with(UnitTypes.navanax, UnitTypes.toxopid, UnitTypes.corvus);
     public static float playerPolyHealth = 500f;
     public static float playerPolyArmor = 100f;
     public static float playerPolyCooldown = 60f;
     public static float playerOmuraHealth = 100000f;
     public static float playerOmuraArmor = 20f;
     public static float playerOmuraCooldown = 30f;
+    public static float ultraDaggerChance = 1f / 1000f;
+    public static float ultraDaggerHealth = 1000f;
+    public static float ultraDaggerArmor = 100f;
+    public static float ultraDaggerCooldown = 30f;
 
     public static Seq<UnitType> enemyTypes = Seq.with(UnitTypes.toxopid, UnitTypes.arkyid, UnitTypes.spiroct, UnitTypes.atrax); // *MUST* be ordered from most to least powerful
     public static ObjectIntMap<UnitType> enemyThresholds = new ObjectIntMap<>();
@@ -155,6 +161,9 @@ public class CVars{
     public static float crawlerHealthRamp = 1f;
     public static float crawlerSpeedRamp = 0.003f;
 
+    public static int bossT1Cap = 2;
+    public static int bossT2Cap = 5;
+    public static int bossT3Cap = 8;
     public static float bossHealthMultiplier = 6f;
     public static float bossScepterDelayBase = 1200f;
 }
