@@ -26,7 +26,7 @@ public class SwarmAI extends FlyingAI {
                     moveTo(target, unit.type.range * kiteRange);
                 }else if(target != null){
                     Posc targetPosc = target;
-                    if(unit.dst2(targetPosc.getX(), targetPosc.getY()) > avoidRange2){
+                    if(unit.dst2(targetPosc) > avoidRange2){
                         Unit targetSameType = Units.closest(unit.team, unit.x, unit.y, u -> u.type == unit.type && unit.dst2(u) > innerSwarmRange2);
                         moveTo(targetSameType != null ? targetSameType : target, unit.hitSize * 2f);
                     }else{

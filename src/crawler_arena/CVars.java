@@ -35,6 +35,7 @@ public class CVars{
     public static float waveDelay = 10f;
     public static float reinforcementWaveDelayBase = 50f;
     public static float reinforcementWaveDelayRamp = 3f;
+    public static float reinforcementWaveDelayMax = 90f;
 
     public static Team reinforcementTeam = Team.blue;
     public static int reinforcementMinWave = 8;
@@ -42,11 +43,13 @@ public class CVars{
     public static int reinforcementFactor = 3; // amount of reinforcements is integer-divided by this number
     public static int reinforcementScaling = 2;
     public static int reinforcementMax = 60 * reinforcementFactor;
+    public static int maxAirdropSearches = 100;
     public static float rareAidChance = 1f / 5f;
     public static float blockDropChance = 1f / 25f;
 
     public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
     public static ObjectIntMap<Block> rareAidBlockAmounts = new ObjectIntMap<>();
+    public static Seq<Block> guaranteedAirdrops = Seq.with(Blocks.coreNucleus, Blocks.boulder);
     public static ObjectIntMap<UnitType> unitCosts = new ObjectIntMap<>();
 
     public static float playerCrawlerHealth = 400f;
@@ -62,7 +65,7 @@ public class CVars{
     public static float playerOmuraHealth = 100000f;
     public static float playerOmuraArmor = 20f;
     public static float playerOmuraCooldown = 30f;
-    public static float ultraDaggerChance = 1f / 1000f;
+    public static float ultraDaggerChance = 1f / 150f;
     public static float ultraDaggerHealth = 1000f;
     public static float ultraDaggerArmor = 100f;
     public static float ultraDaggerCooldown = 30f;
@@ -130,7 +133,6 @@ public class CVars{
         Blocks.powerSource, 4,
         Blocks.itemSource, 6,
         Blocks.constructor, 1,
-        Blocks.deconstructor, 1,
 
         Blocks.thoriumWallLarge, 8,
         Blocks.surgeWallLarge, 4,
@@ -156,7 +158,8 @@ public class CVars{
         Blocks.groundFactory, 1,
         Blocks.airFactory, 1,
         Blocks.navalFactory, 1,
-        Blocks.overdriveDome, 4);
+        Blocks.overdriveDome, 4,
+        Blocks.boulder, 100);
     }
     public static float crawlerHealthRamp = 1f;
     public static float crawlerSpeedRamp = 0.003f;
@@ -164,6 +167,7 @@ public class CVars{
     public static int bossT1Cap = 2;
     public static int bossT2Cap = 5;
     public static int bossT3Cap = 8;
+    public static int bossBuffThreshold = 150000;
     public static float bossHealthMultiplier = 6f;
-    public static float bossScepterDelayBase = 1200f;
+    public static float bossScepterDelayBase = 600f;
 }
