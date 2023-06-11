@@ -90,7 +90,7 @@ public class CVars{
         unitCosts.putAll(UnitTypes.nova, 100,
         UnitTypes.pulsar, 300,
         UnitTypes.quasar, 2000,
-        UnitTypes.vela, 15000,
+        UnitTypes.vela, 18000,
         UnitTypes.corvus, 250000,
 
         UnitTypes.dagger, 25,
@@ -98,6 +98,24 @@ public class CVars{
         UnitTypes.fortress, 1500,
         UnitTypes.scepter, 20000,
         UnitTypes.reign, 250000,
+
+        UnitTypes.merui, 450,
+        UnitTypes.cleroi, 1800,
+        UnitTypes.anthicus, 12000,
+        UnitTypes.tecta, 22000,
+        UnitTypes.collaris, 325000,
+
+        UnitTypes.elude, 500,
+        UnitTypes.avert, 1000,
+        UnitTypes.obviate, 11000,
+        UnitTypes.quell, 25000,
+        UnitTypes.disrupt, 250000,
+
+        UnitTypes.stell, 400,
+        UnitTypes.locus, 2500,
+        UnitTypes.precept, 10000,
+        UnitTypes.vanquish, 22000,
+        UnitTypes.conquer, 250000,
 
         UnitTypes.crawler, 7500,
         UnitTypes.atrax, 250,
@@ -123,7 +141,7 @@ public class CVars{
         UnitTypes.sei, 75000,
         UnitTypes.omura, 1500000,
 
-        UnitTypes.mono, 3750000,
+        UnitTypes.mono, 10000000,
         UnitTypes.poly, 100000,
         UnitTypes.mega, 2500,
         UnitTypes.quad, 25000,

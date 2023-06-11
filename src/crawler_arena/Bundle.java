@@ -5,6 +5,7 @@ import arc.struct.ObjectMap;
 import arc.struct.StringMap;
 import arc.util.Strings;
 import arc.util.Structs;
+import arc.util.Log;
 import mindustry.Vars;
 import mindustry.gen.Groups;
 import mindustry.gen.Iconc;
@@ -95,7 +96,6 @@ public class Bundle {
 
     public static Locale findLocale(Player player){
         Locale locale = Structs.find(Bundle.supportedLocales, l -> l.toString().equals(player.locale) || player.locale.startsWith(l.toString()));
-        return locale != null ? locale : Bundle.defaultLocale();
+        return locale == null ? Bundle.defaultLocale() : locale;
     }
 }
-

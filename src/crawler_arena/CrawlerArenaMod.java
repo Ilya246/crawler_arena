@@ -8,7 +8,7 @@ import arc.math.geom.Point2;
 import arc.struct.*;
 import arc.util.*;
 import arc.util.pooling.Pools;
-import mindustry.ai.types.FlyingAI;
+import mindustry.ai.types.*;
 import mindustry.content.*;
 import mindustry.entities.abilities.*;
 import mindustry.entities.bullet.SapBulletType;
@@ -43,18 +43,17 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        content.units().each(un -> un.controller = u -> new FlyingAI());
-        UnitTypes.crawler.controller = u -> new ArenaAI();
-        UnitTypes.atrax.controller = u -> new ArenaAI();
-        UnitTypes.spiroct.controller = u -> new ArenaAI();
-        UnitTypes.arkyid.controller = u -> new ArenaAI();
-        UnitTypes.toxopid.controller = u -> new ArenaAI();
+        UnitTypes.crawler.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.atrax.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.spiroct.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.arkyid.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.toxopid.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
 
         UnitTypes.poly.controller = u -> new SwarmAI();
-        UnitTypes.mega.controller = u -> new ReinforcementAI();
+        UnitTypes.mega.controller = u -> u.team == CVars.reinforcementTeam ? new ReinforcementAI() : !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? u.type.aiController.get() : new CommandAI();
 
-        UnitTypes.scepter.controller = u -> new ArenaAI();
-        UnitTypes.reign.controller = u -> new ArenaAI();
+        UnitTypes.scepter.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.reign.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
 
         UnitTypes.risso.flying = true;
         UnitTypes.minke.flying = true;
@@ -488,7 +487,6 @@ public class CrawlerArenaMod extends Plugin {
             addUnitAbility(unit, new UnitSpawnAbility(UnitTypes.dagger, ultraDaggerCooldown, 0f, -1f));
             applyStatus(unit, Float.MAX_VALUE, 3, StatusEffects.overclock, StatusEffects.overdrive, StatusEffects.boss);
         }
-        unit.controller(new FlyingAI());
     }
     public void setUnit(Unit unit){
         setUnit(unit, false);
@@ -512,7 +510,7 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("upgrade", "<type> [amount]", "Upgrade to another unit", (args, player) -> {
+        handler.<Player>register("upgrade", "<type> [amount]", "Upgrade to another unit. Specifying amount instead buys units to fight alongside you", (args, player) -> {
             UnitType newUnitType = Seq.with(unitCosts.keys()).find(u -> u.name.equalsIgnoreCase(args[0]));
             if(newUnitType == null){
                 Bundle.bundled(player, "commands.upgrade.unit-not-found");
@@ -538,7 +536,7 @@ public class CrawlerArenaMod extends Plugin {
             }
 
             if(money.get(player.uuid()) >= unitCosts.get(newUnitType) * amount){
-                if(!player.dead() && player.unit().type == newUnitType || amount > 1){
+                if(!player.dead() && player.unit().type == newUnitType || args.length == 2){
                     for(int i = 0; i < amount; i++){
                         Unit newUnit = newUnitType.spawn(player.x + Mathf.random(), player.y + Mathf.random());
                         setUnit(newUnit);
@@ -604,6 +602,20 @@ public class CrawlerArenaMod extends Plugin {
                 unitCostsCopy.remove(type);
             });
             player.sendMessage(upgrades.toString());
+        });
+
+        handler.<Player>register("cost", "<type>", "Lookup the cost of a unit", (args, player) -> {
+            int cost = -1;
+            for(ObjectIntMap.Entry<UnitType> pair : unitCosts.entries()){
+                if(pair.key.name.equalsIgnoreCase(args[0])){
+                    cost = pair.value;
+                }
+            }
+            if(cost == -1){
+                Bundle.bundled(player, "commands.upgrade.unit-not-found");
+                return;
+            }
+            player.sendMessage(Integer.toString(cost));
         });
     }
 

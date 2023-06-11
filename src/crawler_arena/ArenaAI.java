@@ -26,7 +26,7 @@ public class ArenaAI extends GroundAI {
 
         if(!Units.invalidateTarget(target, unit, unit.range()) && unit.hasWeapons()){
             rotate = true;
-            shoot = unit.within(target, unit.range() + (target instanceof Building ? 1.5f * Vars.tilesize / 2f : ((Hitboxc) target).hitSize() / 2f));
+            shoot = unit.within(target, unit.type.range + (target instanceof Building ? 1.5f * Vars.tilesize / 2f : ((Hitboxc) target).hitSize() / 2f));
 
             if(unit.type.hasWeapons())
                 unit.aimLook(Predict.intercept(unit, target, unit.type.weapons.first().bullet.speed));
