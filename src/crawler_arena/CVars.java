@@ -12,12 +12,12 @@ public class CVars{
 
     public static int bossWave = 25;
     public static int crawlersCeiling = 10000000;
-    public static int maxUnits = 2000;
-    public static int keepCrawlers = 800;
+    public static int maxUnits = 4000;
+    public static int keepCrawlers = 1500;
     public static float crawlersExpBase = 2.2f;
     public static float crawlersRamp = 1f / 1.5f;
     public static float extraCrawlersRamp = 1f / 150f;
-    public static float crawlersMultiplier = 1f / 10f;
+    public static float crawlersMultiplier = 1f / 7f;
 
     public static float moneyExpBase = 2.2f;
     public static float moneyRamp = 1f / 1.5f;
@@ -29,16 +29,17 @@ public class CVars{
     public static float crawlerSpeedBase = 0.43f;
     public static float statScalingNormal = 1f / 100f;
     public static float extraScalingRamp = 1f / 2f;
-    public static float healthMultiplierBase = 1f / 5f;
+    public static float healthMultiplierBase = 1f / 7f;
 
     public static float firstWaveDelay = 15f;
     public static float waveDelay = 10f;
-    public static float reinforcementWaveDelayBase = 50f;
-    public static float reinforcementWaveDelayRamp = 3f;
-    public static float reinforcementWaveDelayMax = 90f;
+    public static float waveDelayRamp = 1f;
+    public static float reinforcementWaveDelayBase = 20f;
+    public static float reinforcementWaveDelayRamp = 4f;
+    public static float reinforcementWaveDelayMax = 80f;
 
     public static Team reinforcementTeam = Team.blue;
-    public static int reinforcementMinWave = 8;
+    public static int reinforcementMinWave = 2;
     public static int reinforcementSpacing = 2;
     public static int reinforcementFactor = 3; // amount of reinforcements is integer-divided by this number
     public static int reinforcementScaling = 2;
@@ -73,6 +74,8 @@ public class CVars{
     public static Seq<UnitType> enemyTypes = Seq.with(UnitTypes.toxopid, UnitTypes.arkyid, UnitTypes.spiroct, UnitTypes.atrax); // *MUST* be ordered from most to least powerful
     public static ObjectIntMap<UnitType> enemyThresholds = new ObjectIntMap<>();
     public static ObjectIntMap<UnitType> enemyCrawlerCuts = new ObjectIntMap<>();
+    public static ObjectFloatMap<UnitType> enemyMaxSpawnTimes = new ObjectFloatMap<>();
+    public static ObjectFloatMap<UnitType> enemySpawnTimeRamps = new ObjectFloatMap<>();
     public static ObjectFloatMap<UnitType> defaultEnemySpeeds = new ObjectFloatMap<>();
     static {
         enemyTypes.each(type -> defaultEnemySpeeds.put(type, type.speed));
@@ -86,6 +89,18 @@ public class CVars{
         UnitTypes.spiroct, 400,
         UnitTypes.arkyid, 1000,
         UnitTypes.toxopid, 20000);
+
+        enemyMaxSpawnTimes.put(UnitTypes.crawler, 5f);
+        enemyMaxSpawnTimes.put(UnitTypes.atrax, 20f);
+        enemyMaxSpawnTimes.put(UnitTypes.spiroct, 40f);
+        enemyMaxSpawnTimes.put(UnitTypes.arkyid, 70f);
+        enemyMaxSpawnTimes.put(UnitTypes.toxopid, 100f);
+
+        enemySpawnTimeRamps.put(UnitTypes.crawler, 1f);
+        enemySpawnTimeRamps.put(UnitTypes.atrax, 1f);
+        enemySpawnTimeRamps.put(UnitTypes.spiroct, 1f);
+        enemySpawnTimeRamps.put(UnitTypes.arkyid, 1f);
+        enemySpawnTimeRamps.put(UnitTypes.toxopid, 2f);
 
         unitCosts.putAll(UnitTypes.nova, 100,
         UnitTypes.pulsar, 300,

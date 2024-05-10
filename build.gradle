@@ -1,31 +1,76 @@
-apply plugin: "java"
-
-version '1.0'
-
-sourceSets.main{
-    java.srcDirs = ["src"]
-    resources.srcDirs = ["src/resources"]
+plugins {
+    id 'java'
+    id "de.undercouch.download" version "5.6.0"
 }
 
-repositories{
+group 'ilya246'
+version '2.0'
+
+sourceSets.main.java.srcDirs = ["src"]
+
+repositories {
+    mavenLocal()
     mavenCentral()
-    maven{ url 'https://www.jitpack.io' }
+    google()
+
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+    maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+    maven { url 'https://repo.spongepowered.org/repository/maven-public/' }
+    maven { url 'https://jitpack.io' }
+    maven { url "https://plugins.gradle.org/m2/" }
+    maven { url "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository" }
 }
 
-dependencies{
-    def version = "v143"
-    compileOnly "com.github.Anuken.Arc:arc-core:$version"
-    compileOnly "com.github.Anuken.Mindustry:core:$version"
+ext {
+    mindustryVersion = "v146"
 }
 
-jar{
-    archiveFileName = "${project.archivesBaseName}.jar"
+dependencies {
+    compileOnly("com.github.anuken.Arc:arc-core:$mindustryVersion")
+    compileOnly("com.github.anuken.mindustry:core:$mindustryVersion")
+}
 
-    from{
-        configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if(details.requested.group == 'com.github.Anuken.Arc') details.useVersion("$mindustryVersion")
     }
+}
 
-    from(rootDir){
-        include "plugin.json"
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
+tasks.register('downloadServer', Download) {
+    src 'https://github.com/Anuken/Mindustry/releases/download/v146/server-release.jar'
+    dest new File(project.rootDir, 'test/server-release.jar')
+    overwrite true
+}
+
+tasks.register("moveMod", Copy){
+    from "${project.buildDir}/libs"
+    into "${project.rootDir}/test/config/mods"
+}
+
+tasks.register("runServer", Exec){
+    workingDir = file('test')
+
+    commandLine 'java', '-jar', 'server-release.jar', 'host'
+
+    // Inherit input/output streams
+    standardInput = System.in
+    standardOutput = System.out
+    errorOutput = System.err
+}
+
+jar {
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    archiveFileName = "CrawlerArenaPlugin.jar"
+
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+
+    from("$rootDir/src/resources"){
+        include "**"
     }
 }

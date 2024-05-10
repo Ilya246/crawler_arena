@@ -25,6 +25,7 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.payloads.BuildPayload;
 import mindustry.world.blocks.storage.CoreBlock;
+import mindustry.world.meta.Env;
 
 import static mindustry.Vars.*;
 import static crawler_arena.CVars.*;
@@ -39,7 +40,14 @@ public class CrawlerArenaMod extends Plugin {
     public static ObjectMap<String, UnitType> units = new ObjectMap<>();
     public static ObjectIntMap<String> unitIDs = new ObjectIntMap<>();
 
+    public static ObjectIntMap<UnitType> spawnsLeft = new ObjectIntMap<>();
+
+    public static Seq<Building> toRespawn = new Seq<>();
+
+    public static Seq<Timer.Task> timers = new Seq<>(); // for cleanup purposes
+
     public static long timer = Time.millis();
+    public static long waveStartTime = Time.millis();
 
     @Override
     public void init(){
@@ -96,6 +104,9 @@ public class CrawlerArenaMod extends Plugin {
                 state.rules.waveTimer = false;
                 state.rules.waves = true;
                 state.rules.unitCap = unitCap;
+                state.rules.env = defaultEnv;
+                state.rules.hiddenBuildItems.clear();
+                state.rules.planet = Planets.sun;
                 Call.setRules(state.rules);
                 newGame();
             });
@@ -129,7 +140,11 @@ public class CrawlerArenaMod extends Plugin {
                                 intruder.clearUnit();
                             }
                         }
-                        Timer.schedule(() -> event.player.unit(swapTo), 1f);
+                        Timer.schedule(() -> {
+                            if(!swapTo.dead && swapTo != null){
+                                event.player.unit(swapTo);
+                            }
+                        }, 1f);
                     }
                 }else{
                     respawnPlayer(event.player);
@@ -157,14 +172,28 @@ public class CrawlerArenaMod extends Plugin {
             if(Mathf.chance(1f * tipChance * Time.delta)) Bundle.sendToChat("events.tip.info");
             if(Mathf.chance(1f * tipChance * Time.delta)) Bundle.sendToChat("events.tip.upgrades");
 
-            if(!Groups.unit.contains(u -> u.team == state.rules.waveTeam) && !waveIsOver){
+            if(!spawnsLeft.isEmpty()){
+                float timePassed = (Time.millis() - waveStartTime) * 0.001f;
+                for(ObjectIntMap.Entry<UnitType> e : spawnsLeft.entries()){
+                    float maxSpawnTime = enemyMaxSpawnTimes.get(e.key, 5f) + enemySpawnTimeRamps.get(e.key, 0f) * wave;
+                    float spawnRate = Mathf.sqrt(e.value) * Math.min(1f, timePassed / maxSpawnTime);
+                    if(Mathf.random() < Time.delta / 60f * spawnRate){
+                        spawnEnemy(e.key, worldWidth * 0.4f, worldHeight * 0.4f);
+                        int val = e.value;
+                        spawnsLeft.put(e.key, e.value - 1);
+                        if(val - 1 <= 0){
+                            spawnsLeft.remove(e.key);
+                        }
+                    }
+                }
+            }else if(!Groups.unit.contains(u -> u.team == state.rules.waveTeam) && !waveIsOver){
                 if(wave < reinforcementMinWave || wave % reinforcementSpacing != 0){
-                    Bundle.sendToChat("events.wave", (int)waveDelay);
-                    Timer.schedule(this::nextWave, waveDelay);
+                    Bundle.sendToChat("events.wave", (int)(waveDelay + wave * waveDelayRamp));
+                    timers.add(Timer.schedule(this::nextWave, waveDelay + wave * waveDelayRamp));
                 }else{
                     Bundle.sendToChat("events.next-wave", (int)(Math.min(reinforcementWaveDelayBase + wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
-                    Timer.schedule(this::spawnReinforcements, 2.5f);
-                    Timer.schedule(this::nextWave, Math.min(reinforcementWaveDelayBase + wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax));
+                    timers.add(Timer.schedule(this::spawnReinforcements, 2.5f));
+                    timers.add(Timer.schedule(this::nextWave, Math.min(reinforcementWaveDelayBase + wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
                 }
                 Groups.player.each(p -> {
                     respawnPlayer(p);
@@ -189,7 +218,8 @@ public class CrawlerArenaMod extends Plugin {
             gameIsOver = true;
             return;
         }
-
+        timers.each(t -> t.cancel());
+        timers.clear();
         reset();
         Timer.schedule(() -> gameIsOver = false, 5f);
 
@@ -202,7 +232,7 @@ public class CrawlerArenaMod extends Plugin {
     public void spawnReinforcements(){
         Bundle.sendToChat("events.aid");
         Seq<Unit> megas = new Seq<>();
-        ObjectMap<Block, Integer> blocks = new ObjectMap<>();
+        ObjectIntMap<Block> blocks = new ObjectIntMap<>();
         int megasFactor = (int)Math.min(wave * reinforcementScaling * statScaling, reinforcementMax);
         for(int i = 0; i < megasFactor; i += reinforcementFactor){
             Unit u = UnitTypes.mega.spawn(reinforcementTeam, 32, worldCenterY + Mathf.random(-80, 80));
@@ -333,9 +363,9 @@ public class CrawlerArenaMod extends Plugin {
         applyStatus(unit, duration, 1, effects);
     }
 
-    public void spawnEnemy(UnitType unit, int spX, int spY){
-        int sX = 32;
-        int sY = 32;
+    public void spawnEnemy(UnitType unit, float spX, float spY){
+        float sX = 32;
+        float sY = 32;
         switch (Mathf.random(0, 3)){
             case 0 -> {
                 sX = worldWidth - 32;
@@ -381,6 +411,7 @@ public class CrawlerArenaMod extends Plugin {
     public void nextWave(){
         wave++;
         state.wave = wave;
+        waveStartTime = Time.millis();
         statScaling = 1f + wave * statScalingNormal;
         Timer.schedule(() -> waveIsOver = false, 1f);
 
@@ -412,26 +443,20 @@ public class CrawlerArenaMod extends Plugin {
         UnitTypes.crawler.health += crawlerHealthRamp * wave * statScaling;
         UnitTypes.crawler.speed += crawlerSpeedRamp * wave * statScaling;
 
-        int spreadX = Math.max(worldCenterX - 160 - wave * 10, 160);
-        int spreadY = Math.max(worldCenterY - 160 - wave * 10, 160);
-
-        ObjectIntMap<UnitType> typeCounts = new ObjectIntMap<>();
         int totalTarget = maxUnits - keepCrawlers;
         for(UnitType type : enemyTypes){
             int typeCount = Math.min(crawlers / enemyCrawlerCuts.get(type), totalTarget / 2);
             totalTarget -= typeCount;
-            typeCounts.put(type, typeCount);
+            if(typeCount != 0){
+                spawnsLeft.put(type, typeCount);
+            }
             crawlers -= typeCount * enemyCrawlerCuts.get(type) / 2;
             type.speed = defaultEnemySpeeds.get(type, 1f);
         }
         crawlers = Math.min(crawlers, keepCrawlers);
-
-        typeCounts.forEach(entry -> spawnEnemies(entry.key, entry.value, spreadX, spreadY));
-        spawnEnemies(UnitTypes.crawler, crawlers, spreadX, spreadY);
-    }
-
-    public void spawnEnemies(UnitType unit, int amount, int spX, int spY){
-        for (int i = 0; i < amount; i++) spawnEnemy(unit, spX, spY);
+        if(crawlers != 0){
+            spawnsLeft.put(UnitTypes.crawler, crawlers);
+        }
     }
 
     public void addUnitAbility(Unit unit, Ability ability){
@@ -501,6 +526,7 @@ public class CrawlerArenaMod extends Plugin {
         money.clear();
         units.clear();
         unitIDs.clear();
+        spawnsLeft.clear();
         Groups.player.each(p -> {
             money.put(p.uuid(), 0);
             units.put(p.uuid(), UnitTypes.dagger);
