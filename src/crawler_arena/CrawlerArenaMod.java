@@ -231,9 +231,8 @@ public class CrawlerArenaMod extends Plugin {
                         b.tile.setNet(block, b.team, b.rotation);
                         toRespawn.remove(b);
                         i--;
-                    }else{
-                        Call.effect(Fx.placeBlock, b.x, b.y, (float)block.size, Color.white);
                     }
+                    Call.effect(Fx.placeBlock, b.x, b.y, (float)block.size, Color.white);
                 }
             }
         });
