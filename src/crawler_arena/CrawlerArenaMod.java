@@ -21,8 +21,7 @@ import mindustry.graphics.Pal;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration;
 import mindustry.type.*;
-import mindustry.world.Block;
-import mindustry.world.Tile;
+import mindustry.world.*;
 import mindustry.world.blocks.payloads.BuildPayload;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.meta.Env;
@@ -43,6 +42,7 @@ public class CrawlerArenaMod extends Plugin {
     public static ObjectIntMap<UnitType> spawnsLeft = new ObjectIntMap<>();
 
     public static Seq<Building> toRespawn = new Seq<>();
+    public static Interval respawnInterval = new Interval();
 
     public static Seq<Timer.Task> timers = new Seq<>(); // for cleanup purposes
 
@@ -96,7 +96,9 @@ public class CrawlerArenaMod extends Plugin {
 
         Events.on(WorldLoadEvent.class, event -> {
             if(state.rules.defaultTeam.core() != null){
-                Core.app.post(() -> state.rules.defaultTeam.cores().each(Building::kill));
+                Core.app.post(() -> state.rules.defaultTeam.cores().each(c -> {
+                    c.tile.setNet(Blocks.air);
+                }));
             }
 
             Core.app.post(() -> {
@@ -104,6 +106,7 @@ public class CrawlerArenaMod extends Plugin {
                 state.rules.waveTimer = false;
                 state.rules.waves = true;
                 state.rules.unitCap = unitCap;
+                state.rules.enemyCoreBuildRadius = 0f;
                 state.rules.env = defaultEnv;
                 state.rules.hiddenBuildItems.clear();
                 state.rules.planet = Planets.sun;
@@ -150,6 +153,10 @@ public class CrawlerArenaMod extends Plugin {
                     respawnPlayer(event.player);
                 }
             }
+        });
+
+        Events.on(BlockDestroyEvent.class, (e) -> {
+            toRespawn.add(e.tile.build);
         });
 
         Events.run(Trigger.update, () -> {
@@ -203,6 +210,31 @@ public class CrawlerArenaMod extends Plugin {
             }
             if(!waveIsOver){
                 enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta * statScaling);
+            }else if(respawnInterval.get(60f)){
+                for(int i = 0; i < toRespawn.size; i++){
+                    Building b = toRespawn.get(i);
+                    Block block = b.block;
+                    boolean valid = true;
+                    for(int xi = b.tileX() - (block.size - 1) / 2; xi <= b.tileX() + block.size / 2; xi++){
+                        for(int yi = b.tileY() - (block.size - 1) / 2; yi <= b.tileY() + block.size / 2; yi++){
+                            if(world.tile(xi, yi).build != null){
+                                valid = false;
+                                break;
+                            }
+                        }
+                        if(!valid){
+                            break;
+                        }
+                    }
+                    valid = valid && !Units.anyEntities(b.x - block.size * tilesize / 2f, b.y - block.size * tilesize / 2f, block.size * tilesize, block.size * tilesize);
+                    if(valid){
+                        b.tile.setNet(block, b.team, b.rotation);
+                        toRespawn.remove(b);
+                        i--;
+                    }else{
+                        Call.effect(Fx.placeBlock, b.x, b.y, (float)block.size, Color.white);
+                    }
+                }
             }
         });
 
@@ -295,13 +327,13 @@ public class CrawlerArenaMod extends Plugin {
             }
         }
 
-        blocks.each((block, amount) -> {
-            for(int i = 0; i < amount; i++){
+        for(ObjectIntMap.Entry<Block> e : blocks){
+            for(int i = 0; i < e.value; i++){
                 if(megas.get(megas.size - 1) instanceof Payloadc pay)
-                    pay.addPayload(new BuildPayload(block, state.rules.defaultTeam));
+                    pay.addPayload(new BuildPayload(e.key, state.rules.defaultTeam));
             }
             megas.remove(megas.size - 1);
-        });
+        }
     }
 
     public void respawnPlayer(Player p){
@@ -527,6 +559,7 @@ public class CrawlerArenaMod extends Plugin {
         units.clear();
         unitIDs.clear();
         spawnsLeft.clear();
+        toRespawn.clear();
         Groups.player.each(p -> {
             money.put(p.uuid(), 0);
             units.put(p.uuid(), UnitTypes.dagger);
