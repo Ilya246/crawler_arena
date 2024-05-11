@@ -188,7 +188,7 @@ public class CrawlerArenaMod extends Plugin {
                     float maxSpawnTime = enemyMaxSpawnTimes.get(e.key, 5f) + enemySpawnTimeRamps.get(e.key, 0f) * wave;
                     float spawnRate = Mathf.sqrt(e.value) * Math.min(1f, timePassed / maxSpawnTime);
                     if(Mathf.random() < Time.delta / 60f * spawnRate){
-                        spawnEnemy(e.key, worldWidth * 0.4f, worldHeight * 0.4f);
+                        spawnEnemy(e.key);
                         int val = e.value;
                         spawnsLeft.put(e.key, e.value - 1);
                         if(val - 1 <= 0){
@@ -359,27 +359,40 @@ public class CrawlerArenaMod extends Plugin {
     }
 
     public void respawnPlayer(Player p){
+        int resX = Mathf.round(worldCenterX / tilesize);
+        int resY = Mathf.round(worldCenterY / tilesize);
+        Player at = Groups.player.find(pl -> !pl.dead());
+        if(at != null){
+            resX = at.tileX();
+            resY = at.tileY();
+        }
         if(p.dead() || p.unit().id != unitIDs.get(p.uuid())){
             Unit oldUnit = Groups.unit.getByID(unitIDs.get(p.uuid()));
             if(oldUnit != null && oldUnit != p.unit()){
                 oldUnit.kill();
             }
-            Tile tile = world.tile(worldCenterX / 8 + Mathf.random(-3, 3), worldCenterY / 8 + Mathf.random(-3, 3));
+            int x = Mathf.clamp(resX + Mathf.random(-3, 3), 0, world.width() - 1);
+            int y = Mathf.clamp(resY + Mathf.random(-3, 3), 0, world.height() - 1);
+            Tile tile = world.tile(x, y);
             UnitType type = units.get(p.uuid());
             if(type == null){ // why does this happen
                 type = UnitTypes.dagger;
             }
-            int x = tile.x;
             if(!type.flying && tile.solid()){
-                while (x > 0 && world.tile(x, tile.y).solid()){
-                    x--;
-                }
-                if(x == 0){
-                    x = tile.x;
-                    tile.removeNet();
+                int tries = 0;
+                while(world.tile(x, y).solid()){
+                    x += Mathf.random(-3, 3);
+                    x = Mathf.clamp(x, 0, world.width() - 1);
+                    y += Mathf.random(-3, 3);
+                    y = Mathf.clamp(y, 0, world.height() - 1);
+                    tries++;
+                    if(tries > 100){
+                        world.tile(x, y).setNet(Blocks.air);
+                        break;
+                    }
                 }
             }
-            Unit unit = type.spawn(x * tilesize, tile.worldy());
+            Unit unit = type.spawn(x * tilesize, y * tilesize);
             setUnit(unit);
             p.unit(unit);
             unitIDs.put(p.uuid(), unit.id);
@@ -417,20 +430,29 @@ public class CrawlerArenaMod extends Plugin {
         applyStatus(unit, duration, 1, effects);
     }
 
-    public void spawnEnemy(UnitType unit, float spX, float spY){
+    public void spawnEnemy(UnitType unit){
         float sX = 32;
         float sY = 32;
-        switch (Mathf.random(0, 3)){
-            case 0 -> {
-                sX = worldWidth - 32;
-                sY = worldCenterY + Mathf.random(-spY, spY);
+        Seq<Tile> spawns = spawner.getSpawns();
+        if(spawns.isEmpty()){
+            float spX = worldWidth * 0.4f;
+            float spY = worldHeight * 0.4f;
+            switch (Mathf.random(0, 3)){
+                case 0 -> {
+                    sX = worldWidth - 32;
+                    sY = worldCenterY + Mathf.random(-spY, spY);
+                }
+                case 1 -> {
+                    sX = worldCenterX + Mathf.random(-spX, spX);
+                    sY = worldHeight - 32;
+                }
+                case 2 -> sY = worldCenterY + Mathf.random(-spY, spY);
+                case 3 -> sX = worldCenterX + Mathf.random(-spX, spX);
             }
-            case 1 -> {
-                sX = worldCenterX + Mathf.random(-spX, spX);
-                sY = worldHeight - 32;
-            }
-            case 2 -> sY = worldCenterY + Mathf.random(-spY, spY);
-            case 3 -> sX = worldCenterX + Mathf.random(-spX, spX);
+        }else{
+            Tile at = spawns.random();
+            sX = at.getX() + Mathf.random(-32f, 32f);
+            sY = at.getY() + Mathf.random(-32f, 32f);
         }
 
         Unit u = unit.spawn(state.rules.waveTeam, sX, sY);
@@ -480,7 +502,7 @@ public class CrawlerArenaMod extends Plugin {
         else if(wave == bossWave - 1) Bundle.sendToChat("events.why-alive");
         else if(wave == bossWave){
             Bundle.sendToChat("events.boss");
-            spawnEnemy(UnitTypes.reign, 32, 32);
+            spawnEnemy(UnitTypes.reign);
             return;
         }
         else if(wave == bossWave + 1){
