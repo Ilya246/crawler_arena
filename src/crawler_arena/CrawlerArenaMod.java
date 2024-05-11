@@ -22,6 +22,8 @@ import mindustry.mod.Plugin;
 import mindustry.net.Administration;
 import mindustry.type.*;
 import mindustry.world.*;
+import mindustry.world.blocks.liquid.Conduit;
+import mindustry.world.blocks.distribution.Conveyor;
 import mindustry.world.blocks.payloads.BuildPayload;
 import mindustry.world.blocks.storage.CoreBlock;
 import mindustry.world.meta.Env;
@@ -43,6 +45,7 @@ public class CrawlerArenaMod extends Plugin {
 
     public static Seq<Building> toRespawn = new Seq<>();
     public static Interval respawnInterval = new Interval();
+    public static Interval retargetInterval = new Interval();
 
     public static Seq<Timer.Task> timers = new Seq<>(); // for cleanup purposes
 
@@ -51,17 +54,17 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void init(){
-        UnitTypes.crawler.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
-        UnitTypes.atrax.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
-        UnitTypes.spiroct.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
-        UnitTypes.arkyid.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
-        UnitTypes.toxopid.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.crawler.aiController = CommandAI::new;
+        UnitTypes.atrax.aiController = CommandAI::new;
+        UnitTypes.spiroct.aiController = CommandAI::new;
+        UnitTypes.arkyid.aiController = CommandAI::new;
+        UnitTypes.toxopid.aiController = CommandAI::new;
 
-        UnitTypes.poly.controller = u -> new SwarmAI();
+        UnitTypes.poly.aiController = SwarmAI::new;
         UnitTypes.mega.controller = u -> u.team == CVars.reinforcementTeam ? new ReinforcementAI() : !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? u.type.aiController.get() : new CommandAI();
 
-        UnitTypes.scepter.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
-        UnitTypes.reign.controller = u -> !u.type.playerControllable || (u.team.isAI() && !u.team.rules().rtsAi) ? new ArenaAI() : new CommandAI();
+        UnitTypes.scepter.aiController = CommandAI::new;
+        UnitTypes.reign.aiController = CommandAI::new;
 
         UnitTypes.risso.flying = true;
         UnitTypes.minke.flying = true;
@@ -208,6 +211,11 @@ public class CrawlerArenaMod extends Plugin {
                 });
                 waveIsOver = true;
             }
+            if(retargetInterval.get(60f)){
+                Groups.unit.each(u -> u.team == state.rules.waveTeam && Mathf.chance(retargetChance * Mathf.sqrt(Groups.unit.size())), u -> {
+                    makeAttack(u);
+                });
+            }
             if(!waveIsOver){
                 enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta * statScaling);
             }else if(respawnInterval.get(120f)){
@@ -229,6 +237,7 @@ public class CrawlerArenaMod extends Plugin {
                     valid = valid && !Units.anyEntities(b.x - block.size * tilesize / 2f, b.y - block.size * tilesize / 2f, block.size * tilesize, block.size * tilesize);
                     if(valid){
                         b.tile.setNet(block, b.team, b.rotation);
+                        b.tile.build.configure(b.config());
                         toRespawn.remove(b);
                         i--;
                     }else{
@@ -242,6 +251,15 @@ public class CrawlerArenaMod extends Plugin {
         netServer.admins.addActionFilter(action -> action.type != Administration.ActionType.breakBlock && action.type != Administration.ActionType.placeBlock);
 
         Log.info("Crawler Arena loaded.");
+    }
+
+    public void makeAttack(Unit u){
+        if(u.controller() instanceof CommandAI c){
+            Teamc target = Units.closestTarget(u.team, u.x, u.y, u.range(), tgt -> tgt.checkTarget(u.type.targetAir, u.type.targetGround), tgt -> u.type.targetGround && !(tgt.block instanceof Conveyor || tgt.block instanceof Conduit));
+            if(target != null){
+                c.commandTarget(target);
+            }
+        }
     }
 
     public void newGame(){
@@ -266,7 +284,7 @@ public class CrawlerArenaMod extends Plugin {
         Bundle.sendToChat("events.aid");
         Seq<Unit> megas = new Seq<>();
         ObjectIntMap<Block> blocks = new ObjectIntMap<>();
-        int megasFactor = (int)Math.min(wave * reinforcementScaling * statScaling, reinforcementMax);
+        int megasFactor = Mathf.round(Mathf.sqrt(Groups.player.size()) * Math.min(wave * reinforcementScaling * statScaling, reinforcementMax));
         for(int i = 0; i < megasFactor; i += reinforcementFactor){
             Unit u = UnitTypes.mega.spawn(reinforcementTeam, 32, worldCenterY + Mathf.random(-80, 80));
             u.health = Integer.MAX_VALUE;
@@ -413,6 +431,9 @@ public class CrawlerArenaMod extends Plugin {
         }
 
         Unit u = unit.spawn(state.rules.waveTeam, sX, sY);
+        if(world.tile(sX, sY).solid()){
+            u.elevation = 1f;
+        }
         u.armor = 0f;
         u.maxHealth *= statScaling * healthMultiplierBase;
         u.health = u.maxHealth;
@@ -439,6 +460,7 @@ public class CrawlerArenaMod extends Plugin {
             u.health = u.maxHealth;
             addUnitAbility(u, new UnitSpawnAbility(UnitTypes.scepter, bossScepterDelayBase / Groups.player.size(), 0, -32));
         }
+        makeAttack(u);
     }
 
     public void nextWave(){
@@ -459,9 +481,9 @@ public class CrawlerArenaMod extends Plugin {
             return;
         }
         else if(wave == bossWave + 1){
-            Bundle.sendToChat("events.victory", Time.timeSinceMillis(timer));
+            Bundle.sendToChat("events.victory", Time.timeSinceMillis(timer) / 1000f);
         }
-        else if(wave > bossWave + 1){
+        else if(wave > maxWave){
             gameIsOver = true;
             Bundle.sendToChat("events.gameover.win");
             Timer.schedule(() -> Events.fire(new GameOverEvent(state.rules.defaultTeam)), 2f);

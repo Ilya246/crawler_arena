@@ -13,13 +13,14 @@ public class CVars{
     public static int unitsRows = 10;
 
     public static int bossWave = 25;
+    public static int maxWave = 27;
     public static int crawlersCeiling = 10000000;
     public static int maxUnits = 4000;
     public static int keepCrawlers = 1500;
     public static float crawlersExpBase = 2.2f;
     public static float crawlersRamp = 1f / 1.5f;
     public static float extraCrawlersRamp = 1f / 150f;
-    public static float crawlersMultiplier = 1f / 7f;
+    public static float crawlersMultiplier = 1f / 5f;
 
     public static float moneyExpBase = 2.2f;
     public static float moneyRamp = 1f / 1.5f;
@@ -42,13 +43,15 @@ public class CVars{
 
     public static Team reinforcementTeam = Team.blue;
     public static int reinforcementMinWave = 2;
-    public static int reinforcementSpacing = 2;
+    public static int reinforcementSpacing = 1;
     public static int reinforcementFactor = 3; // amount of reinforcements is integer-divided by this number
-    public static int reinforcementScaling = 2;
+    public static int reinforcementScaling = 1;
     public static int reinforcementMax = 60 * reinforcementFactor;
     public static int maxAirdropSearches = 100;
     public static float rareAidChance = 1f / 5f;
     public static float blockDropChance = 1f / 25f;
+
+    public static float retargetChance = 10f;
 
     public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
     public static ObjectIntMap<Block> rareAidBlockAmounts = new ObjectIntMap<>();
@@ -167,7 +170,10 @@ public class CVars{
         aidBlockAmounts.putAll(Blocks.liquidSource, 4,
         Blocks.powerSource, 4,
         Blocks.itemSource, 6,
+        Blocks.heatSource, 4,
         Blocks.constructor, 1,
+        Blocks.unloader, 4,
+        Blocks.container, 2,
 
         Blocks.thoriumWallLarge, 8,
         Blocks.surgeWallLarge, 4,
@@ -190,6 +196,7 @@ public class CVars{
 
         rareAidBlockAmounts.putAll(Blocks.largeConstructor, 1,
         Blocks.coreNucleus, 1,
+        Blocks.coreAcropolis, 1,
         Blocks.groundFactory, 1,
         Blocks.airFactory, 1,
         Blocks.navalFactory, 1,
