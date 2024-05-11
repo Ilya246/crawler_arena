@@ -431,7 +431,7 @@ public class CrawlerArenaMod extends Plugin {
         }
 
         Unit u = unit.spawn(state.rules.waveTeam, sX, sY);
-        if(world.tile(sX, sY).solid()){
+        if(world.tileWorld(sX, sY).solid()){
             u.elevation = 1f;
         }
         u.armor = 0f;
