@@ -663,24 +663,26 @@ public class CrawlerArenaMod extends Plugin {
                 }
             }
             IntSeq sortedUnitCosts = unitCosts.values().toArray();
-            int maxPage = (sortedUnitCosts.size - 1) / (unitsRows * page) + 1;
+            int maxPage = (sortedUnitCosts.size - 1) / unitsRows + 1;
             if(1 > page || page > maxPage){
                 Bundle.bundled(player, "exceptions.invalid-amount");
                 return;
             }
             sortedUnitCosts.sort();
+            if(page < maxPage){
+                sortedUnitCosts.removeRange(unitsRows * page, sortedUnitCosts.size - 1);
+            }
             if(page > 1){
                 sortedUnitCosts.removeRange(0, unitsRows * (page - 1) - 1);
             }
-            sortedUnitCosts.removeRange(unitsRows * page, sortedUnitCosts.size - 1);
             ObjectIntMap<UnitType> unitCostsCopy = new ObjectIntMap<>();
             unitCostsCopy.putAll(unitCosts);
             int i = 1;
             StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
-            upgrades.append(Bundle.format("commands.upgrades.header", Bundle.findLocale(player), page, maxPage)).append("/n");
+            upgrades.append(Bundle.format("commands.upgrades.page", Bundle.findLocale(player), page, maxPage)).append("\n");
             sortedUnitCosts.each((cost) -> {
                 UnitType type = unitCostsCopy.findKey(cost);
-                upgrades.append("[gold] - [accent]").append(type.name).append(" [lightgray](").append(cost).append("/n");
+                upgrades.append("[gold] - [accent]").append(type.name).append(" [lightgray](").append(cost).append(")\n");
                 unitCostsCopy.remove(type);
             });
             player.sendMessage(upgrades.toString());
