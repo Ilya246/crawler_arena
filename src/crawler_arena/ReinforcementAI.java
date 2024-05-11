@@ -16,7 +16,7 @@ public class ReinforcementAI extends GroundAI {
 
     @Override
     public void updateUnit(){
-        if(target == null){
+        if(target == null || !target.isAdded()){
             target = Groups.player.isEmpty() ? null : Seq.with(Groups.player).min(p -> {
                 return p.unit() == null ? Float.MAX_VALUE : p.unit().dst2(unit);
             }).unit();

@@ -104,6 +104,7 @@ public class CrawlerArenaMod extends Plugin {
                 }));
             }
 
+            reset();
             Core.app.post(() -> {
                 state.rules.canGameOver = false;
                 state.rules.waveTimer = false;
@@ -276,7 +277,6 @@ public class CrawlerArenaMod extends Plugin {
         }
         timers.each(t -> t.cancel());
         timers.clear();
-        reset();
         Timer.schedule(() -> gameIsOver = false, 5f);
 
         Bundle.sendToChat("events.first-wave", (int)firstWaveDelay);
@@ -632,7 +632,7 @@ public class CrawlerArenaMod extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("upgrade", "Migrated to /unit - use /unit instead", (args, player) -> {
+        handler.<Player>register("upgrade", "[...]", "Migrated to /unit - use /unit instead", (args, player) -> {
             Bundle.bundled(player, "commands.upgrade.use-unit");
         });
         handler.<Player>register("unit", "<type> [amount]", "Upgrade to another unit. Specifying amount instead buys units to fight alongside you", (args, player) -> {
