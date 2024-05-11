@@ -286,7 +286,10 @@ public class CrawlerArenaMod extends Plugin {
         ObjectIntMap<Block> blocks = new ObjectIntMap<>();
         int megasFactor = Mathf.round(Mathf.sqrt(Groups.player.size()) * Math.min(wave * reinforcementScaling * statScaling, reinforcementMax));
         for(int i = 0; i < megasFactor; i += reinforcementFactor){
-            Unit u = UnitTypes.mega.spawn(reinforcementTeam, 32, worldCenterY + Mathf.random(-80, 80));
+            float rot = Mathf.random(360f * Mathf.degRad);
+            float x = worldCenterX * Mathf.cos(rot);
+            float y = worldCenterY * Mathf.sin(rot);
+            Unit u = UnitTypes.mega.spawn(reinforcementTeam, worldCenterX + x, worldCenterY + y);
             u.health = Integer.MAX_VALUE;
             megas.add(u);
         }
