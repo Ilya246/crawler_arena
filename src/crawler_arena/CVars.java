@@ -10,6 +10,8 @@ public class CVars{
     public static int unitCap = 96;
     public static float tipChance = 1f / 30000f;
 
+    public static int unitsRows = 10;
+
     public static int bossWave = 25;
     public static int crawlersCeiling = 10000000;
     public static int maxUnits = 4000;

@@ -210,7 +210,7 @@ public class CrawlerArenaMod extends Plugin {
             }
             if(!waveIsOver){
                 enemyTypes.each(type -> type.speed += enemySpeedBoost * Time.delta * statScaling);
-            }else if(respawnInterval.get(60f)){
+            }else if(respawnInterval.get(120f)){
                 for(int i = 0; i < toRespawn.size; i++){
                     Building b = toRespawn.get(i);
                     Block block = b.block;
@@ -231,6 +231,8 @@ public class CrawlerArenaMod extends Plugin {
                         b.tile.setNet(block, b.team, b.rotation);
                         toRespawn.remove(b);
                         i--;
+                    }else{
+                        Call.effect(Fx.unitCapKill, b.x, b.y, 1, Color.white);
                     }
                     Call.effect(Fx.placeBlock, b.x, b.y, (float)block.size, Color.white);
                 }
@@ -648,15 +650,37 @@ public class CrawlerArenaMod extends Plugin {
 
         handler.<Player>register("info", "Show info about the Crawler Arena gamemode", (args, player) -> Bundle.bundled(player, "commands.info"));
 
-        handler.<Player>register("upgrades", "Show units you can upgrade to", (args, player) -> {
-            StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
+        handler.<Player>register("upgrades", "[page]", "Show units you can upgrade to", (args, player) -> {
+            int page;
+            if(args.length == 0){
+                page = 1;
+            }else{
+                try{
+                    page = Integer.parseInt(args[0]);
+                }catch(NumberFormatException e){
+                    Bundle.bundled(player, "exceptions.invalid-amount");
+                    return;
+                }
+            }
             IntSeq sortedUnitCosts = unitCosts.values().toArray();
+            int maxPage = (sortedUnitCosts.size - 1) / (unitsRows * page) + 1;
+            if(1 > page || page > maxPage){
+                Bundle.bundled(player, "exceptions.invalid-amount");
+                return;
+            }
             sortedUnitCosts.sort();
+            if(page > 1){
+                sortedUnitCosts.removeRange(0, unitsRows * (page - 1) - 1);
+            }
+            sortedUnitCosts.removeRange(unitsRows * page, sortedUnitCosts.size - 1);
             ObjectIntMap<UnitType> unitCostsCopy = new ObjectIntMap<>();
             unitCostsCopy.putAll(unitCosts);
+            int i = 1;
+            StringBuilder upgrades = new StringBuilder(Bundle.format("commands.upgrades.header", Bundle.findLocale(player)));
+            upgrades.append(Bundle.format("commands.upgrades.header", Bundle.findLocale(player), page, maxPage)).append("/n");
             sortedUnitCosts.each((cost) -> {
                 UnitType type = unitCostsCopy.findKey(cost);
-                upgrades.append("[gold] - [accent]").append(type.name).append(" [lightgray](").append(cost).append(")\n");
+                upgrades.append("[gold] - [accent]").append(type.name).append(" [lightgray](").append(cost).append("/n");
                 unitCostsCopy.remove(type);
             });
             player.sendMessage(upgrades.toString());
