@@ -126,6 +126,10 @@ public class CrawlerArenaMod extends Plugin {
             timer = Time.millis();
         });
 
+        Events.on(GameOverEvent.class, event -> {
+            gameIsOver = true;
+        });
+
         Events.on(PlayerJoin.class, event -> {
             if(!money.containsKey(event.player.uuid()) || !units.containsKey(event.player.uuid())){
                 Bundle.bundled(event.player, "events.join.welcome");
@@ -615,10 +619,19 @@ public class CrawlerArenaMod extends Plugin {
         });
     }
 
+    public UnitType findType(String name){
+        Seq<UnitType> types = Seq.with(unitCosts.keys());
+        UnitType type = types.find(u -> u.name.contains(name));
+        return type == null ? types.min(u -> Strings.levenshtein(u.name, name)) : type;
+    }
+
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("upgrade", "<type> [amount]", "Upgrade to another unit. Specifying amount instead buys units to fight alongside you", (args, player) -> {
-            UnitType newUnitType = Seq.with(unitCosts.keys()).find(u -> u.name.equalsIgnoreCase(args[0]));
+        handler.<Player>register("upgrade", "Migrated to /unit - use /unit instead", (args, player) -> {
+            Bundle.bundled(player, "commands.upgrade.use-unit");
+        });
+        handler.<Player>register("unit", "<type> [amount]", "Upgrade to another unit. Specifying amount instead buys units to fight alongside you", (args, player) -> {
+            UnitType newUnitType = findType(args[0].toLowerCase());
             if(newUnitType == null){
                 Bundle.bundled(player, "commands.upgrade.unit-not-found");
                 return;
@@ -736,17 +749,13 @@ public class CrawlerArenaMod extends Plugin {
         });
 
         handler.<Player>register("cost", "<type>", "Lookup the cost of a unit", (args, player) -> {
-            int cost = -1;
-            for(ObjectIntMap.Entry<UnitType> pair : unitCosts.entries()){
-                if(pair.key.name.equalsIgnoreCase(args[0])){
-                    cost = pair.value;
-                }
-            }
+            UnitType type = findType(args[0].toLowerCase());
+            int cost = unitCosts.get(type, -1);
             if(cost == -1){
                 Bundle.bundled(player, "commands.upgrade.unit-not-found");
                 return;
             }
-            player.sendMessage(Integer.toString(cost));
+            player.sendMessage(type.name + (" - ") + (Integer.toString(cost)));
         });
     }
 
