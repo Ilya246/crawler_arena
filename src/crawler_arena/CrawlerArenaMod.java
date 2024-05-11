@@ -275,8 +275,6 @@ public class CrawlerArenaMod extends Plugin {
             gameIsOver = true;
             return;
         }
-        timers.each(t -> t.cancel());
-        timers.clear();
         Timer.schedule(() -> gameIsOver = false, 5f);
 
         Bundle.sendToChat("events.first-wave", (int)firstWaveDelay);
@@ -617,6 +615,8 @@ public class CrawlerArenaMod extends Plugin {
         unitIDs.clear();
         spawnsLeft.clear();
         toRespawn.clear();
+        timers.each(t -> t.cancel());
+        timers.clear();
         Groups.player.each(p -> {
             money.put(p.uuid(), 0);
             units.put(p.uuid(), UnitTypes.dagger);
