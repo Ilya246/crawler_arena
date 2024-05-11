@@ -12,7 +12,6 @@ import static mindustry.Vars.*;
 public class ReinforcementAI extends GroundAI {
 
     Teamc target = null;
-    boolean reached = false;
     Vec2 moveAt = new Vec2();
 
     @Override
@@ -21,17 +20,16 @@ public class ReinforcementAI extends GroundAI {
             target = Groups.player.isEmpty() ? null : Seq.with(Groups.player).min(p -> {
                 return p.unit() == null ? Float.MAX_VALUE : p.unit().dst2(unit);
             }).unit();
-        }else{
-            if(!reached){
+            if(target != null){ // for the edge case where the target is instantly in range
                 moveAt = moveAt.trns(Mathf.atan2(target.getX() - unit.x, target.getY() - unit.y) * Mathf.radDeg, unit.speed());
             }
-            unit.moveAt(moveAt);
-            if(target.within(unit, 120f)){
-                reached = true;
-            }
-            if(reached){
+        }else{
+            if(!target.within(unit, 120f)){
+                moveAt = moveAt.trns(Mathf.atan2(target.getX() - unit.x, target.getY() - unit.y) * Mathf.radDeg, unit.speed());
+            }else{
                 Call.payloadDropped(unit, unit.x, unit.y);
             }
+            unit.moveAt(moveAt);
             if(unit instanceof Payloadc p && !p.hasPayload()){
                 unit.vel.setLength(80f);
                 unit.kill();

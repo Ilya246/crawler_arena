@@ -51,11 +51,12 @@ public class CVars{
     public static float rareAidChance = 1f / 5f;
     public static float blockDropChance = 1f / 25f;
 
-    public static float retargetChance = 10f;
+    public static float retargetChance = 30f;
+    public static float retargetDelay = 180f;
 
     public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
     public static ObjectIntMap<Block> rareAidBlockAmounts = new ObjectIntMap<>();
-    public static Seq<Block> guaranteedAirdrops = Seq.with(Blocks.coreNucleus, Blocks.boulder);
+    public static Seq<Block> guaranteedAirdrops = Seq.with(Blocks.coreNucleus, Blocks.coreAcropolis, Blocks.boulder);
     public static ObjectIntMap<UnitType> unitCosts = new ObjectIntMap<>();
 
     public static float playerCrawlerHealth = 400f;
