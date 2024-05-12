@@ -211,19 +211,7 @@ public class CrawlerArenaMod extends Plugin {
                     }
                 }
             }else if(!Groups.unit.contains(u -> u.team == state.rules.waveTeam) && !waveIsOver){
-                if(state.wave < reinforcementMinWave || state.wave % reinforcementSpacing != 0){
-                    Bundle.sendToChat("events.wave", (int)(waveDelay + state.wave * waveDelayRamp));
-                    timers.add(Timer.schedule(this::nextWave, waveDelay + state.wave * waveDelayRamp));
-                }else{
-                    Bundle.sendToChat("events.next-wave", (int)(Math.min(reinforcementWaveDelayBase + state.wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
-                    timers.add(Timer.schedule(this::spawnReinforcements, 2.5f));
-                    timers.add(Timer.schedule(this::nextWave, Math.min(reinforcementWaveDelayBase + state.wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
-                }
-                Groups.player.each(p -> {
-                    respawnPlayer(p);
-                    money.put(p.uuid(), waveMoney(state.wave));
-                });
-                waveIsOver = true;
+
             }
             if(retargetInterval.get(retargetDelay)){
                 Groups.unit.each(u -> u.team == state.rules.waveTeam && Mathf.chance(retargetChance * Mathf.sqrt(Groups.unit.size())), u -> {
@@ -267,6 +255,22 @@ public class CrawlerArenaMod extends Plugin {
         Log.info("Crawler Arena loaded.");
     }
 
+    public void endWave(){
+        if(state.wave < reinforcementMinWave || state.wave % reinforcementSpacing != 0){
+            Bundle.sendToChat("events.wave", (int)(waveDelay + state.wave * waveDelayRamp));
+            timers.add(Timer.schedule(this::nextWave, waveDelay + state.wave * waveDelayRamp));
+        }else{
+            Bundle.sendToChat("events.next-wave", (int)(Math.min(reinforcementWaveDelayBase + state.wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
+            timers.add(Timer.schedule(this::spawnReinforcements, 2.5f));
+            timers.add(Timer.schedule(this::nextWave, Math.min(reinforcementWaveDelayBase + state.wave * reinforcementWaveDelayRamp, reinforcementWaveDelayMax)));
+        }
+        Groups.player.each(p -> {
+            respawnPlayer(p);
+            money.put(p.uuid(), waveMoney(state.wave));
+        });
+        waveIsOver = true;
+    }
+
     public float waveMoney(int wave){
         return Mathf.pow(moneyExpBase, 1f + wave * (moneyRamp + extraMoneyRamp * wave)) * moneyMultiplier;
     }
@@ -308,9 +312,12 @@ public class CrawlerArenaMod extends Plugin {
     }
 
     public void spawnReinforcements(){
+        spawnReinforcements(Mathf.round(Mathf.sqrt(Groups.player.size()) * state.wave * (1f + state.wave * reinforcementRamp) * reinforcementScaling * statScaling));
+    }
+
+    public void spawnReinforcements(int deliveryAmount){
         Bundle.sendToChat("events.aid");
         Seq<DeliverySpecifier> blocks = new Seq<>();
-        int deliveryAmount = Mathf.round(Mathf.sqrt(Groups.player.size()) * state.wave * (1f + state.wave * reinforcementRamp) * reinforcementScaling * statScaling);
         DropSpecifier guaranteed = guaranteedDrops.get(state.wave);
         if(guaranteed != null){
             for(int i = 0; i < guaranteed.size(); i++){
@@ -785,5 +792,19 @@ public class CrawlerArenaMod extends Plugin {
 
     public void registerServerCommands(CommandHandler handler){
         handler.register("kill", "Kill all enemies in the current wave.", args -> Groups.unit.each(u -> u.team == state.rules.waveTeam, Unitc::kill));
+        handler.register("spawnaid", "[amount]", "Spawn aid drops.", args -> {
+            if(args.length > 0){
+                int amount = 0;
+                try{
+                    amount = Integer.parseInt(args[0]);
+                }catch(NumberFormatException e){
+                    Log.info("Invalid amount.");
+                    return;
+                }
+                spawnReinforcements(amount);
+            }else{
+                spawnReinforcements();
+            }
+        });
     }
 }

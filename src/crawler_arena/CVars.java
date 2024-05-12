@@ -95,8 +95,7 @@ public class CVars{
         int moveBy = Integer.highestOneBit(aidDrops.size);
         while(moveBy > 0){
             int nextInd = ind + moveBy;
-            float nextWeight = nextInd + 1 >= aidDrops.size ? aidBlocksTotal : aidDrops.get(nextInd).weight;
-            if(nextInd < aidDrops.size && nextWeight < at){
+            if(nextInd < aidDrops.size && aidDrops.get(nextInd).weight < at){
                 ind += moveBy;
             }
             moveBy = moveBy >> 1;
@@ -217,7 +216,7 @@ public class CVars{
         Seq<Block> drops = new Seq<>();
         IntSeq dropAmounts = new IntSeq();
         weights.addAll(    7f,                    7f,                        5f,                      10f,
-                            5f,                    5f,                        1f,                      5f,
+                            5f,                    5f,                        0f,                      5f,
                              5f,                    10f,                       10f,                     5f,
                               5f,                    5f,                        5f,                      5f,
                            2f,                    3f,                        3f,                      3f,
@@ -248,8 +247,8 @@ public class CVars{
                             1,                     1,                         100,                     3);
         for(int i = 0; i < drops.size; i++){
             float weight = weights.get(i);
-            aidBlocksTotal += weight;
             aidDrops.add(new WeightedEntry<>(aidBlocksTotal, new DropSpecifier(drops.get(i), dropAmounts.get(i))));
+            aidBlocksTotal += weight;
         }
 
         guaranteedDrops.put(16, new DropSpecifier(Blocks.largeConstructor, 1));
