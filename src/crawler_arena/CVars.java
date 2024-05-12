@@ -252,8 +252,8 @@ public class CVars{
         }
 
         guaranteedDrops.put(20, new DropSpecifier(Blocks.largeConstructor, 1));
-        guaranteedDrops.put(2,  new DropSpecifier(new Block[]{Blocks.itemSource, Blocks.liquidSource, Blocks.heatSource},
-                                                  new int[]  {4,                 4,                   4                }));
+        guaranteedDrops.put(2,  new DropSpecifier(new Block[]{Blocks.itemSource, Blocks.liquidSource, Blocks.heatSource, Blocks.powerSource},
+                                                  new int[]  {4,                 4,                   4,                 4}));
     }
     public static float crawlerHealthRamp = 1f;
     public static float crawlerSpeedRamp = 0.003f;
