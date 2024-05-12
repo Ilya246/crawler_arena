@@ -47,7 +47,7 @@ public class CVars{
     public static int reinforcementMinWave = 2;
     public static int reinforcementSpacing = 1;
     public static float reinforcementScaling = 1f / 4f;
-    public static float reinforcementRamp = reinforcementScaling / 20f;
+    public static float reinforcementRamp = 1f / 20f;
     public static int maxAirdropSearches = 100;
     public static float blockDropChance = 1f / 25f;
 
