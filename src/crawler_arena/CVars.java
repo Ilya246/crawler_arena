@@ -244,7 +244,7 @@ public class CVars{
                            1,                     2,                         6,                       6,
                             4,                     2,                         2,                       2,
                              2,                     2,                         2,                       2,
-                              1,                     1,                         1,                       1,
+                              1,                     1,                         1,                       2,
                            1,                     1,                         1,                       1,
                             1,                     1,                         100,                     3);
         for(int i = 0; i < drops.size; i++){
@@ -253,7 +253,8 @@ public class CVars{
             aidDrops.add(new WeightedEntry<>(aidBlocksTotal, new DropSpecifier(drops.get(i), dropAmounts.get(i))));
         }
 
-        guaranteedDrops.put(20, new DropSpecifier(Blocks.largeConstructor, 1));
+        guaranteedDrops.put(16, new DropSpecifier(Blocks.largeConstructor, 1));
+        guaranteedDrops.put(8,  new DropSpecifier(Blocks.constructor,      1));
         guaranteedDrops.put(2,  new DropSpecifier(new Block[]{Blocks.itemSource, Blocks.liquidSource, Blocks.heatSource, Blocks.powerSource},
                                                   new int[]  {4,                 4,                   4,                 4}));
     }
