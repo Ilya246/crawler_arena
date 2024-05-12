@@ -211,7 +211,7 @@ public class CrawlerArenaMod extends Plugin {
                     }
                 }
             }else if(!Groups.unit.contains(u -> u.team == state.rules.waveTeam) && !waveIsOver){
-
+                endWave();
             }
             if(retargetInterval.get(retargetDelay)){
                 Groups.unit.each(u -> u.team == state.rules.waveTeam && Mathf.chance(retargetChance * Mathf.sqrt(Groups.unit.size())), u -> {
