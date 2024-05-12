@@ -100,7 +100,6 @@ public class CVars{
                 ind += moveBy;
             }
             moveBy = moveBy >> 1;
-            Log.info("index @ moveBy @", ind, moveBy);
         }
         return aidDrops.get(ind).value;
     }
