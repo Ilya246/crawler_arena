@@ -26,7 +26,7 @@ public class CVars{
 
     public static float moneyExpBase = 2.2f;
     public static float moneyRamp = 1f / 1.5f;
-    public static float extraMoneyRamp = 1f / 40f;
+    public static float extraMoneyRamp = 1f / 26f / 26f;
     public static float moneyMultiplier = 4f;
 
     public static float enemySpeedBoost = 0.00002f;

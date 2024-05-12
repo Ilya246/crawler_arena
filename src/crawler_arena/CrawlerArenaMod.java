@@ -268,7 +268,7 @@ public class CrawlerArenaMod extends Plugin {
     }
 
     public float waveMoney(int wave){
-        return Mathf.pow(moneyExpBase, 1f + wave * (1f + extraMoneyRamp * wave) * moneyRamp) * moneyMultiplier;
+        return Mathf.pow(moneyExpBase, 1f + wave * (moneyRamp + extraMoneyRamp * wave)) * moneyMultiplier;
     }
 
     public void makeAttack(Unit u){
