@@ -646,7 +646,7 @@ public class CrawlerArenaMod extends Plugin {
     public UnitType findType(String name){
         Seq<UnitType> types = Seq.with(unitCosts.keys());
         UnitType type = types.filter(u -> u.name.contains(name)).min(u -> Strings.levenshtein(u.name, name));
-        return type == null ? types.min(u -> Strings.levenshtein(u.name, name)) : type;
+        return type == null ? Seq.with(unitCosts.keys()).min(u -> Strings.levenshtein(u.name, name)) : type;
     }
 
     @Override

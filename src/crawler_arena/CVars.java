@@ -94,7 +94,9 @@ public class CVars{
         int ind = 0;
         int moveBy = Integer.highestOneBit(aidDrops.size);
         while(moveBy > 0){
-            if(ind + moveBy < aidDrops.size && aidDrops.get(ind + moveBy).weight < at){
+            int nextInd = ind + moveBy;
+            float nextWeight = nextInd + 1 >= aidDrops.size ? aidBlocksTotal : aidDrops.get(nextInd).weight;
+            if(nextInd < aidDrops.size && nextWeight < at){
                 ind += moveBy;
             }
             moveBy = moveBy >> 1;
@@ -247,8 +249,8 @@ public class CVars{
                             1,                     1,                         100);
         for(int i = 0; i < drops.size; i++){
             float weight = weights.get(i);
-            aidDrops.add(new WeightedEntry<>(weight + aidBlocksTotal, new DropSpecifier(drops.get(i), dropAmounts.get(i))));
             aidBlocksTotal += weight;
+            aidDrops.add(new WeightedEntry<>(aidBlocksTotal, new DropSpecifier(drops.get(i), dropAmounts.get(i))));
         }
 
         guaranteedDrops.put(20, new DropSpecifier(Blocks.largeConstructor, 1));
