@@ -226,7 +226,7 @@ public class CVars{
                              4f,                    4f,                        4f,                      3f,
                               3f,                    3f,                        3f,                      3f,
                            3f,                    1f,                        1f,                      1f,
-                            1f,                    1f,                        1f);
+                            1f,                    1f,                        1f,                      4f);
         drops.addAll(      Blocks.liquidSource,   Blocks.powerSource,        Blocks.powerNodeLarge,   Blocks.itemSource,
                             Blocks.heatSource,     Blocks.constructor,        Blocks.largeConstructor, Blocks.unloader,
                              Blocks.container,      Blocks.thoriumWallLarge,   Blocks.surgeWallLarge,   Blocks.mendProjector,
@@ -236,7 +236,7 @@ public class CVars{
                              Blocks.cyclone,        Blocks.fuse,               Blocks.lustre,           Blocks.swarmer,
                               Blocks.tsunami,        Blocks.spectre,            Blocks.foreshadow,       Blocks.scathe,
                            Blocks.malign,         Blocks.coreNucleus,        Blocks.coreAcropolis,    Blocks.groundFactory,
-                            Blocks.airFactory,     Blocks.navalFactory,       Blocks.boulder);
+                            Blocks.airFactory,     Blocks.navalFactory,       Blocks.boulder,          Blocks.segment);
         dropAmounts.addAll(4,                     4,                         4,                       6,
                             4,                     1,                         1,                       4,
                              2,                     8,                         4,                       3,
@@ -246,7 +246,7 @@ public class CVars{
                              2,                     2,                         2,                       2,
                               1,                     1,                         1,                       1,
                            1,                     1,                         1,                       1,
-                            1,                     1,                         100);
+                            1,                     1,                         100,                     3);
         for(int i = 0; i < drops.size; i++){
             float weight = weights.get(i);
             aidBlocksTotal += weight;
