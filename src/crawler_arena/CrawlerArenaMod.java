@@ -343,9 +343,9 @@ public class CrawlerArenaMod extends Plugin {
                 int x = Mathf.round(worldCenterX / tilesize);
                 int y = Mathf.round(worldCenterY / tilesize);
                 Player at = Groups.player.find(pl -> !pl.dead());
-                if(at != null){
-                    x = at.tileX();
-                    y = at.tileY();
+                if(at != null && at.unit() != null){
+                    x = at.unit().tileX();
+                    y = at.unit().tileY();
                 }
                 int j = 0;
                 while((j < maxAirdropSearches * blockAmount && skydropPoints.size - skydropIndex < blockAmount) || world.tile(x, y) == null){
@@ -403,9 +403,9 @@ public class CrawlerArenaMod extends Plugin {
         int resX = Mathf.round(worldCenterX / tilesize);
         int resY = Mathf.round(worldCenterY / tilesize);
         Player at = Groups.player.find(pl -> !pl.dead());
-        if(at != null){
-            resX = at.tileX();
-            resY = at.tileY();
+        if(at != null && at.unit() != null){
+            resX = at.unit().tileX();
+            resY = at.unit().tileY();
         }
         if(p.dead() || p.unit().id != unitIDs.get(p.uuid())){
             Unit oldUnit = Groups.unit.getByID(unitIDs.get(p.uuid()));
