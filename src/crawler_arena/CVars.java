@@ -216,7 +216,7 @@ public class CVars{
         Seq<Block> drops = new Seq<>();
         IntSeq dropAmounts = new IntSeq();
         weights.addAll(    7f,                    7f,                        5f,                      10f,
-                            5f,                    5f,                        0f,                      5f,
+                            5f,                    5f,                        1f,                      5f,
                              5f,                    10f,                       10f,                     5f,
                               5f,                    5f,                        5f,                      5f,
                            2f,                    3f,                        3f,                      3f,
