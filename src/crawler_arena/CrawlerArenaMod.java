@@ -37,7 +37,7 @@ public class CrawlerArenaMod extends Plugin {
     public static int worldWidth, worldHeight, worldCenterX, worldCenterY;
     public static float statScaling = 1f;
 
-    public static ObjectIntMap<String> money = new ObjectIntMap<>();
+    public static ObjectFloatMap<String> money = new ObjectFloatMap<>();
     public static ObjectMap<String, UnitType> units = new ObjectMap<>();
     public static ObjectIntMap<String> unitIDs = new ObjectIntMap<>();
 
@@ -135,9 +135,7 @@ public class CrawlerArenaMod extends Plugin {
         Events.on(PlayerJoin.class, event -> {
             if(!money.containsKey(event.player.uuid()) || !units.containsKey(event.player.uuid())){
                 Bundle.bundled(event.player, "events.join.welcome");
-                money.put(event.player.uuid(), (int)(money.get(event.player.uuid(), 0) + Mathf.pow(moneyExpBase, 1f + state.wave * moneyRamp + Mathf.pow(state.wave, 2) * extraMoneyRamp) * moneyMultiplier));
-                units.put(event.player.uuid(), UnitTypes.dagger);
-                respawnPlayer(event.player);
+                // let the "player gc" take care of this
             }else{
                 Bundle.bundled(event.player, "events.join.already-played");
                 if(unitIDs.containsKey(event.player.uuid())){
@@ -152,11 +150,11 @@ public class CrawlerArenaMod extends Plugin {
                                 intruder.clearUnit();
                             }
                         }
-                        Timer.schedule(() -> {
+                        timers.add(Timer.schedule(() -> {
                             if(!swapTo.dead && swapTo != null){
                                 event.player.unit(swapTo);
                             }
-                        }, 1f);
+                        }, 1f));
                     }
                 }else{
                     respawnPlayer(event.player);
@@ -171,6 +169,16 @@ public class CrawlerArenaMod extends Plugin {
         Events.run(Trigger.update, () -> {
             if(gameIsOver) return;
 
+            Groups.player.each(p -> {
+                if(!money.containsKey(p.uuid())){
+                    money.put(p.uuid(), waveMoney(state.wave));
+                }
+                if(!units.containsKey(p.uuid())){
+                    units.put(p.uuid(), UnitTypes.dagger);
+                    respawnPlayer(p);
+                }
+            }); // "player GC" for players with missing entries
+
             if(!Groups.unit.contains(u -> u.team == state.rules.defaultTeam)){
                 gameIsOver = true;
                 if(state.wave > bossWave){
@@ -183,7 +191,7 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             }
 
-            Groups.player.each(p -> Call.setHudText(p.con, Bundle.format("labels.money", Bundle.findLocale(p), money.get(p.uuid()))));
+            Groups.player.each(p -> Call.setHudText(p.con, Bundle.format("labels.money", Bundle.findLocale(p), Mathf.round(money.get(p.uuid(), 0f)))));
 
             if(Mathf.chance(1f * tipChance * Time.delta)) Bundle.sendToChat("events.tip.info");
             if(Mathf.chance(1f * tipChance * Time.delta)) Bundle.sendToChat("events.tip.upgrades");
@@ -213,7 +221,7 @@ public class CrawlerArenaMod extends Plugin {
                 }
                 Groups.player.each(p -> {
                     respawnPlayer(p);
-                    money.put(p.uuid(), (int)(money.get(p.uuid(), 0) + Mathf.pow(moneyExpBase, 1f + state.wave * moneyRamp + Mathf.pow(state.wave, 2) * extraMoneyRamp) * moneyMultiplier));
+                    money.put(p.uuid(), waveMoney(state.wave));
                 });
                 waveIsOver = true;
             }
@@ -259,6 +267,10 @@ public class CrawlerArenaMod extends Plugin {
         Log.info("Crawler Arena loaded.");
     }
 
+    public float waveMoney(int wave){
+        return Mathf.pow(moneyExpBase, 1f + wave * (1f + extraMoneyRamp * wave) * moneyRamp) * moneyMultiplier;
+    }
+
     public void makeAttack(Unit u){
         if(u.controller() instanceof CommandAI c){
             Teamc target = Units.closestTarget(u.team, u.x, u.y, u.range(), tgt -> tgt.checkTarget(u.type.targetAir, u.type.targetGround), tgt -> u.type.targetGround && !(tgt.block instanceof Conveyor || tgt.block instanceof Conduit));
@@ -283,32 +295,44 @@ public class CrawlerArenaMod extends Plugin {
         waveIsOver = true;
     }
 
+    public static class DeliverySpecifier{
+        Block block = null;
+        int amount = 1;
+        boolean skydrop = false;
+
+        public DeliverySpecifier(Block block, int amount, boolean skydrop){
+            this.block = block;
+            this.amount = amount;
+            this.skydrop = skydrop;
+        }
+    }
+
     public void spawnReinforcements(){
         Bundle.sendToChat("events.aid");
-        Seq<Unit> megas = new Seq<>();
-        ObjectIntMap<Block> blocks = new ObjectIntMap<>();
-        int megasFactor = Mathf.round(Mathf.sqrt(Groups.player.size()) * Math.min(state.wave * reinforcementScaling * statScaling, reinforcementMax));
-        for(int i = 0; i < megasFactor; i += reinforcementFactor){
-            float rot = Mathf.random(360f * Mathf.degRad);
-            float x = worldCenterX * Mathf.cos(rot);
-            float y = worldCenterY * Mathf.sin(rot);
-            Unit u = UnitTypes.mega.spawn(reinforcementTeam, worldCenterX + x, worldCenterY + y);
-            u.health = Integer.MAX_VALUE;
-            megas.add(u);
+        Seq<DeliverySpecifier> blocks = new Seq<>();
+        int deliveryAmount = Mathf.round(Mathf.sqrt(Groups.player.size()) * state.wave * (1f + state.wave * reinforcementRamp) * reinforcementScaling * statScaling);
+        DropSpecifier guaranteed = guaranteedDrops.get(state.wave);
+        if(guaranteed != null){
+            for(int i = 0; i < guaranteed.size(); i++){
+                blocks.add(new DeliverySpecifier(guaranteed.blocks.get(i), guaranteed.amounts.get(i), true));
+            }
+        }
+        for(int i = 0; i < deliveryAmount; i++){
+            DropSpecifier spec = randomDrop();
+            for(int j = 0; j < spec.size(); j++){
+                Block block = spec.blocks.get(j);
+                blocks.add(new DeliverySpecifier(block,
+                                                 spec.amounts.get(j),
+                                                 guaranteedAirdrops.contains(block) || Mathf.chance(blockDropChance)));
+            }
         }
 
-        for(int i = 0; i < megas.size; i++){
-            Block block;
-            boolean rare = false;
-            if(Mathf.chance(rareAidChance / aidBlockAmounts.size)){
-                block = Seq.with(rareAidBlockAmounts.keys()).random();
-                rare = true;
-            }else{
-                block = Seq.with(aidBlockAmounts.keys()).random();
-            }
-            if(guaranteedAirdrops.contains(block) || Mathf.chance(blockDropChance)){
-                int blockAmount = rare ? rareAidBlockAmounts.get(block) : aidBlockAmounts.get(block);
-                int range = 10;
+        IntSeq skydropPoints = new IntSeq();
+        int skydropIndex = 0;
+        for(DeliverySpecifier d : blocks){
+            Block block = d.block;
+            int blockAmount = d.amount;
+            if(d.skydrop){
                 int x = Mathf.round(worldCenterX / tilesize);
                 int y = Mathf.round(worldCenterY / tilesize);
                 Player at = Groups.player.find(pl -> !pl.dead());
@@ -316,9 +340,8 @@ public class CrawlerArenaMod extends Plugin {
                     x = at.tileX();
                     y = at.tileY();
                 }
-                IntSeq valids = new IntSeq();
                 int j = 0;
-                while((j < maxAirdropSearches * blockAmount && valids.size < blockAmount) || world.tile(x, y) == null){
+                while((j < maxAirdropSearches * blockAmount && skydropPoints.size - skydropIndex < blockAmount) || world.tile(x, y) == null){
                     x += Mathf.random(-3, 3);
                     x = Mathf.clamp(x, block.size, world.width() - block.size);
                     y += Mathf.random(-3, 3);
@@ -326,7 +349,7 @@ public class CrawlerArenaMod extends Plugin {
                     boolean valid = true;
                     for(int xi = x - (block.size - 1) / 2; xi <= x + block.size / 2; xi++){
                         for(int yi = y - (block.size - 1) / 2; yi <= y + block.size / 2; yi++){
-                            if(world.tile(xi, yi).solid() || valids.contains(Point2.pack(xi, yi))){
+                            if(world.tile(xi, yi).solid() || skydropPoints.contains(Point2.pack(xi, yi))){
                                 valid = false;
                                 break;
                             }
@@ -337,12 +360,12 @@ public class CrawlerArenaMod extends Plugin {
                     }
                     valid = valid && !Units.anyEntities(x * tilesize + block.offset - block.size * tilesize / 2f, y * tilesize + block.offset - block.size * tilesize / 2f, block.size * tilesize, block.size * tilesize);
                     if(valid){
-                        valids.add(Point2.pack(x, y));
+                        skydropPoints.add(Point2.pack(x, y));
                     }
-                    range++;
                     j++;
                 }
-                valids.each(v -> {
+                for(int i = skydropIndex; i < skydropPoints.size; i++){
+                    int v = skydropPoints.get(i);
                     Point2 unpacked = Point2.unpack(v);
                     float xf = unpacked.x * tilesize;
                     float yf = unpacked.y * tilesize;
@@ -352,19 +375,20 @@ public class CrawlerArenaMod extends Plugin {
                         Call.effect(Fx.spawnShockwave, xf, yf, block.size * 60f, Color.white);
                         world.tileWorld(xf, yf).setNet(block, state.rules.defaultTeam, 0);
                     });
-                });
-                blocks.put(block, 0);
+                }
+                skydropIndex += blockAmount;
             }else{
-                blocks.put(block, rare ? rareAidBlockAmounts.get(block) : aidBlockAmounts.get(block));
+                float rot = Mathf.random(360f * Mathf.degRad);
+                float x = worldCenterX * Mathf.cos(rot);
+                float y = worldCenterY * Mathf.sin(rot);
+                Unit u = UnitTypes.mega.spawn(reinforcementTeam, worldCenterX + x, worldCenterY + y);
+                u.health = Integer.MAX_VALUE;
+                if(u instanceof Payloadc pay){
+                    for(int i = 0; i < blockAmount; i++){
+                        pay.addPayload(new BuildPayload(block, state.rules.defaultTeam));
+                    }
+                }
             }
-        }
-
-        for(ObjectIntMap.Entry<Block> e : blocks){
-            for(int i = 0; i < e.value; i++){
-                if(megas.get(megas.size - 1) instanceof Payloadc pay)
-                    pay.addPayload(new BuildPayload(e.key, state.rules.defaultTeam));
-            }
-            megas.remove(megas.size - 1);
         }
     }
 
@@ -504,7 +528,7 @@ public class CrawlerArenaMod extends Plugin {
         statScaling = 1f + state.wave * statScalingNormal;
         Timer.schedule(() -> waveIsOver = false, 1f);
 
-        int crawlers = Mathf.ceil(Mathf.pow(crawlersExpBase, 1f + state.wave * crawlersRamp + Mathf.pow(state.wave, 2f) * extraCrawlersRamp) * Groups.player.size() * crawlersMultiplier);
+        int crawlers = Mathf.ceil(Mathf.pow(crawlersExpBase, 1f + state.wave * crawlersRamp * (1f + state.wave * extraCrawlersRamp)) * Groups.player.size() * crawlersMultiplier);
 
         if(state.wave == bossWave - 5) Bundle.sendToChat("events.good-game");
         else if(state.wave == bossWave - 3) Bundle.sendToChat("events.what-so-long");
@@ -617,16 +641,11 @@ public class CrawlerArenaMod extends Plugin {
         toRespawn.clear();
         timers.each(t -> t.cancel());
         timers.clear();
-        Groups.player.each(p -> {
-            money.put(p.uuid(), 0);
-            units.put(p.uuid(), UnitTypes.dagger);
-            Timer.schedule(() -> respawnPlayer(p), 1f);
-        });
     }
 
     public UnitType findType(String name){
         Seq<UnitType> types = Seq.with(unitCosts.keys());
-        UnitType type = types.find(u -> u.name.contains(name));
+        UnitType type = types.filter(u -> u.name.contains(name)).min(u -> Strings.levenshtein(u.name, name));
         return type == null ? types.min(u -> Strings.levenshtein(u.name, name)) : type;
     }
 
@@ -660,20 +679,20 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             }
 
-            if(money.get(player.uuid()) >= unitCosts.get(newUnitType) * amount){
+            if(money.get(player.uuid(), 0f) >= unitCosts.get(newUnitType) * amount){
                 if(!player.dead() && player.unit().type == newUnitType || args.length == 2){
                     for(int i = 0; i < amount; i++){
                         Unit newUnit = newUnitType.spawn(player.x + Mathf.random(), player.y + Mathf.random());
                         setUnit(newUnit);
                     }
-                    money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType) * amount);
+                    money.put(player.uuid(), money.get(player.uuid(), 0f) - unitCosts.get(newUnitType) * amount);
                     Bundle.bundled(player, "commands.upgrade.already");
                     return;
                 }
                 Unit newUnit = newUnitType.spawn(player.x, player.y);
                 setUnit(newUnit, true);
                 player.unit(newUnit);
-                money.put(player.uuid(), money.get(player.uuid()) - unitCosts.get(newUnitType));
+                money.put(player.uuid(), money.get(player.uuid(), 0f) - unitCosts.get(newUnitType));
                 units.put(player.uuid(), newUnitType);
                 unitIDs.put(player.uuid(), newUnit.id);
                 Bundle.bundled(player, "commands.upgrade.success");
@@ -688,9 +707,9 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             }
 
-            int amount;
+            float amount;
             if(args[0].equalsIgnoreCase("all")){
-                amount = money.get(player.uuid());
+                amount = money.get(player.uuid(), 0f);
             }else{
                 try{
                     amount = Integer.parseInt(args[0]);
@@ -704,9 +723,9 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             }
 
-            if(money.get(player.uuid()) >= amount){
-                money.put(player.uuid(), money.get(player.uuid()) - amount);
-                money.put(giveTo.uuid(), money.get(giveTo.uuid()) + amount);
+            if(money.get(player.uuid(), 0f) >= amount){
+                money.put(player.uuid(), money.get(player.uuid(), 0f) - amount);
+                money.put(giveTo.uuid(), money.get(giveTo.uuid(), 0f) + amount);
                 Bundle.bundled(player, "commands.give.success", amount, giveTo.coloredName());
                 Bundle.bundled(giveTo, "commands.give.money-recieved", amount, player.coloredName());
 

@@ -3,6 +3,7 @@ package crawler_arena;
 import arc.math.geom.Vec2;
 import arc.math.Mathf;
 import arc.struct.Seq;
+import arc.util.*;
 import mindustry.ai.types.GroundAI;
 import mindustry.gen.*;
 import mindustry.world.blocks.payloads.*;
@@ -13,6 +14,8 @@ public class ReinforcementAI extends GroundAI {
 
     Teamc target = null;
     Vec2 moveAt = new Vec2();
+    boolean reached = false;
+    long reachedSince = Time.millis();
 
     @Override
     public void updateUnit(){
@@ -24,10 +27,17 @@ public class ReinforcementAI extends GroundAI {
                 moveAt = moveAt.trns(Mathf.atan2(target.getX() - unit.x, target.getY() - unit.y) * Mathf.radDeg, unit.speed());
             }
         }else{
-            if(!target.within(unit, 120f)){
+            if(!target.within(unit, 120f) || Time.millis() - reachedSince > 15 * 1000){
+                if(reached){
+                    target = null;
+                    reached = false;
+                    return;
+                }
                 moveAt = moveAt.trns(Mathf.atan2(target.getX() - unit.x, target.getY() - unit.y) * Mathf.radDeg, unit.speed());
+                reachedSince = Time.millis();
             }else{
                 Call.payloadDropped(unit, unit.x, unit.y);
+                reached = true;
             }
             unit.moveAt(moveAt);
             if(unit instanceof Payloadc p && !p.hasPayload()){

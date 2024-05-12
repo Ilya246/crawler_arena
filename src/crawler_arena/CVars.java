@@ -1,6 +1,8 @@
 package crawler_arena;
 
 import arc.struct.*;
+import arc.math.*;
+import arc.util.*;
 import mindustry.content.*;
 import mindustry.game.Team;
 import mindustry.type.UnitType;
@@ -19,12 +21,12 @@ public class CVars{
     public static int keepCrawlers = 1500;
     public static float crawlersExpBase = 2.2f;
     public static float crawlersRamp = 1f / 1.5f;
-    public static float extraCrawlersRamp = 1f / 150f;
+    public static float extraCrawlersRamp = 1f / 40f;
     public static float crawlersMultiplier = 1f / 5f;
 
     public static float moneyExpBase = 2.2f;
     public static float moneyRamp = 1f / 1.5f;
-    public static float extraMoneyRamp = 1f / 4000f;
+    public static float extraMoneyRamp = 1f / 40f;
     public static float moneyMultiplier = 4f;
 
     public static float enemySpeedBoost = 0.00002f;
@@ -41,23 +43,65 @@ public class CVars{
     public static float reinforcementWaveDelayRamp = 4f;
     public static float reinforcementWaveDelayMax = 80f;
 
-    public static Team reinforcementTeam = Team.blue;
+    public static Team reinforcementTeam = Team.derelict;
     public static int reinforcementMinWave = 2;
     public static int reinforcementSpacing = 1;
-    public static int reinforcementFactor = 3; // amount of reinforcements is integer-divided by this number
-    public static int reinforcementScaling = 1;
-    public static int reinforcementMax = 60 * reinforcementFactor;
+    public static float reinforcementScaling = 1f / 4f;
+    public static float reinforcementRamp = reinforcementScaling / 20f;
     public static int maxAirdropSearches = 100;
-    public static float rareAidChance = 1f / 5f;
     public static float blockDropChance = 1f / 25f;
 
     public static float retargetChance = 30f;
     public static float retargetDelay = 180f;
 
-    public static ObjectIntMap<Block> aidBlockAmounts = new ObjectIntMap<>();
-    public static ObjectIntMap<Block> rareAidBlockAmounts = new ObjectIntMap<>();
+    public static class WeightedEntry<T> {
+        public T value;
+        public float weight;
+
+        public WeightedEntry(float w, T val){
+            value = val;
+            weight = w;
+        }
+    }
+
+    public static class DropSpecifier {
+        public Seq<Block> blocks = new Seq<>();
+        public IntSeq amounts = new IntSeq();
+
+        public DropSpecifier(Block block, int amount){
+            blocks.add(block);
+            amounts.add(amount);
+        }
+
+        public DropSpecifier(Block[] blocks, int[] amounts){
+            this.blocks.addAll(blocks);
+            this.amounts.addAll(amounts);
+        }
+
+        public int size(){
+            return blocks.size;
+        }
+    }
+
+    public static Seq<WeightedEntry<DropSpecifier>> aidDrops = new Seq<>();
+    public static float aidBlocksTotal = 0f;
+    public static IntMap<DropSpecifier> guaranteedDrops = new IntMap<>();
     public static Seq<Block> guaranteedAirdrops = Seq.with(Blocks.coreNucleus, Blocks.coreAcropolis, Blocks.boulder);
     public static ObjectIntMap<UnitType> unitCosts = new ObjectIntMap<>();
+
+    public static DropSpecifier randomDrop(){
+        float at = Mathf.random(aidBlocksTotal);
+        int ind = 0;
+        int moveBy = Integer.highestOneBit(aidDrops.size);
+        while(moveBy > 0){
+            if(ind + moveBy < aidDrops.size && aidDrops.get(ind + moveBy).weight < at){
+                ind += moveBy;
+            }
+            moveBy = moveBy >> 1;
+            Log.info("index @ moveBy @", ind, moveBy);
+        }
+        return aidDrops.get(ind).value;
+    }
 
     public static float playerCrawlerHealth = 400f;
     public static float playerCrawlerArmor = 10f;
@@ -153,8 +197,8 @@ public class CVars{
         UnitTypes.retusa, 400,
         UnitTypes.oxynoe, 850,
         UnitTypes.cyerce, 5000,
-        UnitTypes.aegires, 30000,
-        UnitTypes.navanax, 350000,
+        UnitTypes.aegires, 50000,
+        UnitTypes.navanax, 400000,
 
         UnitTypes.risso, 500,
         UnitTypes.minke, 750,
@@ -168,41 +212,48 @@ public class CVars{
         UnitTypes.quad, 25000,
         UnitTypes.oct, 250000);
 
-        aidBlockAmounts.putAll(Blocks.liquidSource, 4,
-        Blocks.powerSource, 4,
-        Blocks.itemSource, 6,
-        Blocks.heatSource, 4,
-        Blocks.constructor, 1,
-        Blocks.unloader, 4,
-        Blocks.container, 2,
+        FloatSeq weights = new FloatSeq();
+        Seq<Block> drops = new Seq<>();
+        IntSeq dropAmounts = new IntSeq();
+        weights.addAll(    7f,                    7f,                        5f,                      10f,
+                            5f,                    5f,                        1f,                      5f,
+                             5f,                    10f,                       10f,                     5f,
+                              5f,                    5f,                        5f,                      5f,
+                           2f,                    3f,                        3f,                      3f,
+                            4f,                    4f,                        4f,                      3f,
+                             4f,                    4f,                        4f,                      3f,
+                              3f,                    3f,                        3f,                      3f,
+                           3f,                    1f,                        1f,                      1f,
+                            1f,                    1f,                        1f);
+        drops.addAll(      Blocks.liquidSource,   Blocks.powerSource,        Blocks.powerNodeLarge,   Blocks.itemSource,
+                            Blocks.heatSource,     Blocks.constructor,        Blocks.largeConstructor, Blocks.unloader,
+                             Blocks.container,      Blocks.thoriumWallLarge,   Blocks.surgeWallLarge,   Blocks.mendProjector,
+                              Blocks.forceProjector, Blocks.repairPoint,        Blocks.repairTurret,     Blocks.overdriveProjector,
+                           Blocks.overdriveDome,  Blocks.hyperProcessor,     Blocks.arc,              Blocks.scorch,
+                            Blocks.lancer,         Blocks.sublimate,          Blocks.ripple,           Blocks.titan,
+                             Blocks.cyclone,        Blocks.fuse,               Blocks.lustre,           Blocks.swarmer,
+                              Blocks.tsunami,        Blocks.spectre,            Blocks.foreshadow,       Blocks.scathe,
+                           Blocks.malign,         Blocks.coreNucleus,        Blocks.coreAcropolis,    Blocks.groundFactory,
+                            Blocks.airFactory,     Blocks.navalFactory,       Blocks.boulder);
+        dropAmounts.addAll(4,                     4,                         4,                       6,
+                            4,                     1,                         1,                       4,
+                             2,                     8,                         4,                       3,
+                              2,                     4,                         2,                       1,
+                           1,                     2,                         6,                       6,
+                            4,                     4,                         2,                       2,
+                             2,                     2,                         2,                       2,
+                              1,                     1,                         1,                       1,
+                           1,                     1,                         1,                       1,
+                            1,                     1,                         100);
+        for(int i = 0; i < drops.size; i++){
+            float weight = weights.get(i);
+            aidDrops.add(new WeightedEntry<>(weight + aidBlocksTotal, new DropSpecifier(drops.get(i), dropAmounts.get(i))));
+            aidBlocksTotal += weight;
+        }
 
-        Blocks.thoriumWallLarge, 8,
-        Blocks.surgeWallLarge, 4,
-
-        Blocks.mendProjector, 3,
-        Blocks.forceProjector, 2,
-        Blocks.repairPoint, 4,
-        Blocks.repairTurret, 2,
-
-        Blocks.overdriveProjector, 1,
-
-        Blocks.arc, 6,
-        Blocks.lancer, 4,
-        Blocks.ripple, 2,
-        Blocks.cyclone, 1,
-        Blocks.swarmer, 2,
-        Blocks.tsunami, 1,
-        Blocks.spectre, 1,
-        Blocks.foreshadow, 1);
-
-        rareAidBlockAmounts.putAll(Blocks.largeConstructor, 1,
-        Blocks.coreNucleus, 1,
-        Blocks.coreAcropolis, 1,
-        Blocks.groundFactory, 1,
-        Blocks.airFactory, 1,
-        Blocks.navalFactory, 1,
-        Blocks.overdriveDome, 4,
-        Blocks.boulder, 100);
+        guaranteedDrops.put(20, new DropSpecifier(Blocks.largeConstructor, 1));
+        guaranteedDrops.put(2,  new DropSpecifier(new Block[]{Blocks.itemSource, Blocks.liquidSource, Blocks.heatSource},
+                                                  new int[]  {4,                 4,                   4                }));
     }
     public static float crawlerHealthRamp = 1f;
     public static float crawlerSpeedRamp = 0.003f;
