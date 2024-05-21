@@ -4,7 +4,7 @@ import arc.Core;
 import arc.Events;
 import arc.graphics.Color;
 import arc.math.Mathf;
-import arc.math.geom.Point2;
+import arc.math.geom.*;
 import arc.struct.*;
 import arc.util.*;
 import arc.util.pooling.Pools;
@@ -191,6 +191,32 @@ public class CrawlerArenaMod extends Plugin {
                 return;
             }
 
+            Groups.unit.each(u -> {
+                if(!u.isFlying()) return;
+                Tile t = u.tileOn();
+                if(t != null && t.solid() && !t.synthetic()){
+                    float tpx[] = new float[]{-1f};
+                    float tpy[] = new float[]{-1f};
+                    int deltaXMin[] = new int[]{Integer.MAX_VALUE / 4};
+                    int deltaYMin[] = new int[]{Integer.MAX_VALUE / 4};
+                    Geometry.circle(u.tileX(), u.tileY(), 5, (x, y) -> {
+                        Tile tile = world.tile(x, y);
+                        if(tile != null && (!tile.solid() || t.synthetic()) && Math.abs(u.tileX() - x) + Math.abs(u.tileY() - y) < deltaXMin[0] + deltaYMin[0]){
+                            tpx[0] = (float)x * tilesize;
+                            tpy[0] = (float)y * tilesize;
+                            deltaXMin[0] = Math.abs(u.tileX() - x);
+                            deltaYMin[0] = Math.abs(u.tileY() - y);
+                        }
+                    });
+                    if(tpx[0] != -1f && tpy[0] != -1f){
+                        u.set(tpx[0], tpy[0]);
+                        if(u.getPlayer() != null){
+                            Call.setPosition(u.getPlayer().con, tpx[0], tpy[0]);
+                        }
+                    }
+                }
+            });
+
             Groups.player.each(p -> Call.setHudText(p.con, Bundle.format("labels.money", Bundle.findLocale(p), Mathf.round(money.get(p.uuid(), 0f)))));
 
             if(Mathf.chance(1f * tipChance * Time.delta)) Bundle.sendToChat("events.tip.info");
@@ -277,7 +303,12 @@ public class CrawlerArenaMod extends Plugin {
 
     public void makeAttack(Unit u){
         if(u.controller() instanceof CommandAI c){
-            Teamc target = Units.closestTarget(u.team, u.x, u.y, u.range(), tgt -> tgt.checkTarget(u.type.targetAir, u.type.targetGround), tgt -> u.type.targetGround && !(tgt.block instanceof Conveyor || tgt.block instanceof Conduit));
+            Teamc target = Units.closestTarget(u.team, u.x, u.y, u.range(), tgt -> {
+                if(!tgt.checkTarget(u.type.targetAir, u.type.targetGround)) return false;
+                Tile tile = world.tile(tgt.tileX(), tgt.tileY());
+                if((tile == null || (tile.solid() && tile.team() != state.rules.defaultTeam)) && !u.isFlying()) return false;
+                return true;
+            }, tgt -> u.type.targetGround && !(tgt.block instanceof Conveyor || tgt.block instanceof Conduit));
             if(target != null){
                 c.commandTarget(target);
             }
@@ -412,8 +443,9 @@ public class CrawlerArenaMod extends Plugin {
             if(oldUnit != null && oldUnit != p.unit()){
                 oldUnit.kill();
             }
-            int x = Mathf.clamp(resX + Mathf.random(-3, 3), 0, world.width() - 1);
-            int y = Mathf.clamp(resY + Mathf.random(-3, 3), 0, world.height() - 1);
+            int randomMag = 6;
+            int x = Mathf.clamp(resX + Mathf.random(-randomMag, randomMag), 0, world.width() - 1);
+            int y = Mathf.clamp(resY + Mathf.random(-randomMag, randomMag), 0, world.height() - 1);
             Tile tile = world.tile(x, y);
             UnitType type = units.get(p.uuid());
             if(type == null){ // why does this happen
@@ -427,7 +459,7 @@ public class CrawlerArenaMod extends Plugin {
                     y += Mathf.random(-3, 3);
                     y = Mathf.clamp(y, 0, world.height() - 1);
                     tries++;
-                    if(tries > 100){
+                    if(tries > 200){
                         world.tile(x, y).setNet(Blocks.air);
                         break;
                     }
